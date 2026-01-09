@@ -58,9 +58,14 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             MARKETING_VERSION="$VERSION"
           
-          # Export app
-          mkdir -p ../dist
-          cp -R ../build/LTXVideoGenerator.xcarchive/Products/Applications/*.app ../build/
+          cd ..
+          
+          # Export app from archive
+          mkdir -p build dist
+          cp -R "build/LTXVideoGenerator.xcarchive/Products/Applications/LTXVideoGenerator.app" "build/LTX Video Generator.app"
+          
+          # Verify app exists
+          ls -la "build/LTX Video Generator.app"
           
           echo "Build complete"
 
