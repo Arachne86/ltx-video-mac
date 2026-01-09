@@ -249,6 +249,23 @@ struct HistoryThumbnailView: View {
     }
 }
 
+// AVPlayerView wrapper to avoid _AVKit_SwiftUI crash on macOS 26
+struct VideoPlayerView: NSViewRepresentable {
+    let player: AVPlayer
+    
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.player = player
+        view.controlsStyle = .inline
+        view.showsFullScreenToggleButton = true
+        return view
+    }
+    
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        nsView.player = player
+    }
+}
+
 struct HistoryDetailView: View {
     @EnvironmentObject var historyManager: HistoryManager
     
@@ -257,9 +274,9 @@ struct HistoryDetailView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Video player
+            // Video player - using AVPlayerView wrapper to avoid SwiftUI crash
             if let player = player {
-                VideoPlayer(player: player)
+                VideoPlayerView(player: player)
                     .aspectRatio(
                         CGFloat(result.parameters.width) / CGFloat(result.parameters.height),
                         contentMode: .fit
