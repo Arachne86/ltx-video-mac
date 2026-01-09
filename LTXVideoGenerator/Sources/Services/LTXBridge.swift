@@ -1,0 +1,380 @@
+import Foundation
+
+enum LTXError: LocalizedError, Equatable {
+    case pythonNotConfigured
+    case modelLoadFailed(String)
+    case generationFailed(String)
+    case exportFailed(String)
+    case cancelled
+    
+    var errorDescription: String? {
+        switch self {
+        case .pythonNotConfigured:
+            return "Python environment not configured. Please check Preferences."
+        case .modelLoadFailed(let msg):
+            return "Failed to load LTX model: \(msg)"
+        case .generationFailed(let msg):
+            return "Generation failed: \(msg)"
+        case .exportFailed(let msg):
+            return "Failed to export video: \(msg)"
+        case .cancelled:
+            return "Generation was cancelled"
+        }
+    }
+}
+
+// Use subprocess to avoid PythonKit threading issues
+class LTXBridge {
+    static let shared = LTXBridge()
+    
+    private(set) var isModelLoaded = false
+    private var pythonPath: String?
+    private var pythonExecutable: String?
+    
+    private init() {
+        setupPythonPaths()
+    }
+    
+    private func setupPythonPaths() {
+        // Get Python path from user defaults
+        if let libPath = UserDefaults.standard.string(forKey: "pythonPath"),
+           !libPath.isEmpty {
+            // Extract python home from lib path
+            // e.g., /Users/jc/.pyenv/versions/3.12.11/lib/libpython3.12.dylib
+            if let pythonHome = libPath.components(separatedBy: "/lib/libpython").first {
+                pythonPath = pythonHome
+                pythonExecutable = "\(pythonHome)/bin/python3"
+            }
+        }
+    }
+    
+    func loadModel(progressHandler: @escaping (String) -> Void) async throws {
+        setupPythonPaths()
+        
+        guard let python = pythonExecutable else {
+            throw LTXError.pythonNotConfigured
+        }
+        
+        progressHandler("Checking Python environment...")
+        
+        // Test that we can import the required modules
+        let testScript = """
+        import torch
+        import diffusers
+        print("OK")
+        """
+        
+        let result = try await runPython(script: testScript)
+        if !result.contains("OK") {
+            throw LTXError.pythonNotConfigured
+        }
+        
+        progressHandler("Python environment ready. Model will load on first generation.")
+        isModelLoaded = true
+    }
+    
+    func generate(
+        request: GenerationRequest,
+        outputPath: String,
+        progressHandler: @escaping (Double, String) -> Void
+    ) async throws -> (videoPath: String, seed: Int) {
+        setupPythonPaths()
+        
+        guard let _ = pythonExecutable else {
+            throw LTXError.pythonNotConfigured
+        }
+        
+        let params = request.parameters
+        let seed = params.seed ?? Int.random(in: 0..<Int(Int32.max))
+        
+        progressHandler(0.1, "Starting generation (this may take several minutes)...")
+        
+        // Escape the prompt for Python
+        let escapedPrompt = request.prompt
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+        
+        let escapedNegative = request.negativePrompt
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+        
+        // Log file path
+        let logFile = "/tmp/ltx_generation.log"
+        
+        let script = """
+import os
+import sys
+import json
+
+import torch
+from diffusers import LTXPipeline
+from diffusers.utils import export_to_video
+
+# Set up file logging
+log_file = open("\(logFile)", "w")
+def log(msg):
+    print(msg, file=log_file, flush=True)
+    print(msg, file=sys.stderr, flush=True)
+
+try:
+    log("=== LTX Generation Started ===")
+    log(f"Python: {sys.executable}")
+    log(f"Torch version: {torch.__version__}")
+    log(f"MPS available: {torch.backends.mps.is_available()}")
+    log("Loading model...")
+    
+    log("Loading pipeline from a-r-r-o-w/LTX-Video-0.9.1-diffusers...")
+    
+    # Use bfloat16 as recommended by LTX-Video docs - works on MPS with PyTorch 2.9+
+    pipe = LTXPipeline.from_pretrained(
+        "a-r-r-o-w/LTX-Video-0.9.1-diffusers",
+        torch_dtype=torch.bfloat16
+    )
+    
+    log("Moving to MPS...")
+    pipe.to("mps")
+    
+    # Keep it simple - match the terminal version that works
+    log("Pipeline ready")
+    
+    log("Generating video...")
+    
+    # Ensure dimensions are divisible by 32 for proper alignment
+    gen_width = (\(params.width) // 32) * 32
+    gen_height = (\(params.height) // 32) * 32
+    # Frames must be 8n+1 for this model
+    gen_frames = ((\(params.numFrames) - 1) // 8) * 8 + 1
+    
+    log(f"Setting up generator with seed \(seed)...")
+    # Use CPU generator - more stable with MPS pipeline
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(\(seed))
+    
+    prompt = "\(escapedPrompt)"
+    negative_prompt = "\(escapedNegative)" if "\(escapedNegative)" else None
+    
+    log(f"Prompt: {prompt}")
+    log(f"Settings: steps=\(params.numInferenceSteps), guidance=\(params.guidanceScale), size={gen_width}x{gen_height}, frames={gen_frames}")
+    log("Starting pipeline...")
+    
+    # Synchronize MPS before generation
+    if torch.backends.mps.is_available():
+        torch.mps.synchronize()
+    
+    result = pipe(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        num_inference_steps=\(params.numInferenceSteps),
+        guidance_scale=\(params.guidanceScale),
+        width=gen_width,
+        height=gen_height,
+        num_frames=gen_frames,
+        generator=generator
+        # Use default output_type - let diffusers handle post-processing
+    )
+    
+    # Synchronize after generation
+    if torch.backends.mps.is_available():
+        torch.mps.synchronize()
+    
+    log(f"Pipeline complete. Result type: {type(result)}")
+    log(f"Frames type: {type(result.frames)}")
+    
+    # result.frames should be a list of numpy arrays or PIL images
+    frames = result.frames[0]  # Get first (and usually only) batch
+    log(f"Frames type after indexing: {type(frames)}")
+    
+    if hasattr(frames, 'shape'):
+        log(f"Frames shape: {frames.shape}")
+    elif hasattr(frames, '__len__'):
+        log(f"Frames length: {len(frames)}")
+    
+    log(f"Exporting video to \(outputPath)...")
+    
+    export_to_video(frames, "\(outputPath)", fps=\(params.fps))
+    
+    log("Export complete!")
+    log_file.close()
+    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed)}))
+except Exception as e:
+    log(f"ERROR: {e}")
+    import traceback
+    log(traceback.format_exc())
+    log_file.close()
+    sys.exit(1)
+"""
+        
+        progressHandler(0.2, "Running generation script...")
+        
+        let output = try await runPython(script: script, timeout: 600) { stderr in
+            DispatchQueue.main.async {
+                if stderr.contains("Loading pipeline") || stderr.contains("Loading checkpoint") {
+                    progressHandler(0.1, "Loading model...")
+                } else if stderr.contains("Moving to MPS") {
+                    progressHandler(0.2, "Moving to GPU...")
+                } else if let match = stderr.firstMatch(of: /(\d+)%\|[^|]*\|\s*(\d+)\/(\d+)/) {
+                    // Parse progress like "12%|█▏        | 3/25"
+                    let currentStep = Int(match.2) ?? 0
+                    let totalSteps = Int(match.3) ?? 1
+                    let percent = Double(currentStep) / Double(totalSteps)
+                    // Map to 0.3-0.9 range (leaving room for load/export)
+                    let mappedProgress = 0.3 + (percent * 0.6)
+                    progressHandler(mappedProgress, "Generating: \(currentStep)/\(totalSteps) steps")
+                } else if stderr.contains("Exporting") {
+                    progressHandler(0.95, "Exporting video...")
+                }
+            }
+        }
+        
+        // Parse JSON output
+        if let data = output.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let videoPath = json["video_path"] as? String,
+           let resultSeed = json["seed"] as? Int {
+            progressHandler(1.0, "Complete!")
+            return (videoPath, resultSeed)
+        }
+        
+        throw LTXError.generationFailed("Failed to parse generation output: \(output)")
+    }
+    
+    func unloadModel() async {
+        isModelLoaded = false
+    }
+    
+    private func runPython(
+        script: String,
+        timeout: TimeInterval = 60,
+        stderrHandler: ((String) -> Void)? = nil
+    ) async throws -> String {
+        guard let python = pythonExecutable else {
+            throw LTXError.pythonNotConfigured
+        }
+        
+        let logFile = "/tmp/ltx_generation.log"
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: python)
+                process.arguments = ["-c", script]
+                
+                // Use a CLEAN environment like terminal - GUI app environment can interfere with MPS
+                var env: [String: String] = [:]
+                
+                // Essential paths only
+                let pythonBin = URL(fileURLWithPath: python).deletingLastPathComponent().path
+                env["PATH"] = "\(pythonBin):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                env["HOME"] = ProcessInfo.processInfo.environment["HOME"] ?? ""
+                env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? ""
+                env["TMPDIR"] = ProcessInfo.processInfo.environment["TMPDIR"] ?? "/tmp"
+                
+                // Inherit library paths for dynamic libraries
+                if let dylibPath = ProcessInfo.processInfo.environment["DYLD_LIBRARY_PATH"] {
+                    env["DYLD_LIBRARY_PATH"] = dylibPath
+                }
+                
+                // Metal/MPS - use defaults, don't inherit app's GPU state
+                env["MTL_ENABLE_DEBUG_INFO"] = "0"
+                
+                process.environment = env
+                
+                let stdoutPipe = Pipe()
+                let stderrPipe = Pipe()
+                process.standardOutput = stdoutPipe
+                process.standardError = stderrPipe
+                
+                // Accumulate stderr for logging
+                var stderrAccumulated = ""
+                let stderrLock = NSLock()
+                
+                // Handle stderr for progress and logging
+                stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+                    let data = handle.availableData
+                    if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
+                        stderrLock.lock()
+                        stderrAccumulated += str
+                        stderrLock.unlock()
+                        
+                        // Write to log file
+                        if let logData = ("[STDERR] " + str).data(using: .utf8) {
+                            if FileManager.default.fileExists(atPath: logFile) {
+                                if let handle = FileHandle(forWritingAtPath: logFile) {
+                                    handle.seekToEndOfFile()
+                                    handle.write(logData)
+                                    handle.closeFile()
+                                }
+                            } else {
+                                try? logData.write(to: URL(fileURLWithPath: logFile))
+                            }
+                        }
+                        
+                        stderrHandler?(str)
+                    }
+                }
+                
+                do {
+                    // Log start
+                    let startLog = "=== LTX Process Started ===\nPython: \(python)\nTime: \(Date())\n"
+                    try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
+                    
+                    try process.run()
+                    process.waitUntilExit()
+                    
+                    stderrPipe.fileHandleForReading.readabilityHandler = nil
+                    
+                    let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+                    
+                    // Log output
+                    let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
+                    if let handle = FileHandle(forWritingAtPath: logFile) {
+                        handle.seekToEndOfFile()
+                        handle.write(outputLog.data(using: .utf8)!)
+                        handle.closeFile()
+                    }
+                    
+                    // Check for valid JSON output first - if we got valid output, ignore exit code
+                    let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let data = trimmedOutput.data(using: .utf8),
+                       let _ = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        // Valid JSON output - success regardless of exit code (warnings may cause non-zero)
+                        continuation.resume(returning: trimmedOutput)
+                        return
+                    }
+                    
+                    if process.terminationStatus != 0 {
+                        // Filter out harmless warnings
+                        stderrLock.lock()
+                        let stderr = stderrAccumulated
+                        stderrLock.unlock()
+                        
+                        // If stderr only contains known harmless warnings, check if we have output
+                        let harmlessPatterns = ["resource_tracker", "semaphore", "UserWarning"]
+                        let isOnlyHarmless = harmlessPatterns.allSatisfy { stderr.contains($0) } ||
+                                            stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        
+                        if !trimmedOutput.isEmpty && isOnlyHarmless {
+                            continuation.resume(returning: trimmedOutput)
+                        } else {
+                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check /tmp/ltx_generation.log"))
+                        }
+                    } else {
+                        continuation.resume(returning: trimmedOutput)
+                    }
+                } catch {
+                    // Log error
+                    let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
+                    if let handle = FileHandle(forWritingAtPath: logFile) {
+                        handle.seekToEndOfFile()
+                        handle.write(errorLog.data(using: .utf8)!)
+                        handle.closeFile()
+                    }
+                    continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
+                }
+            }
+        }
+    }
+}
