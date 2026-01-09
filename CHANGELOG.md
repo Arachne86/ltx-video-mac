@@ -5,6 +5,16 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-01-09
+
+### Added
+- Custom pixel art app icon (created with Aseprite)
+- Python setup prompt on first launch if not configured
+- Alert guides users to Preferences when Python path is missing
+
+### Changed
+- Improved first-run user experience
+
 ## [1.0.0] - 2025-01-09
 
 ### Added
