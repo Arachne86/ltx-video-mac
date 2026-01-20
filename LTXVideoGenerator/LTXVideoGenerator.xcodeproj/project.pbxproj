@@ -25,6 +25,7 @@
 		AA00001F /* ltx_generator.py in Resources */ = {isa = PBXBuildFile; fileRef = AA000020; };
 		AA000021 /* PythonKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA000022; };
 		AA000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA000024; };
+		AA000025 /* APIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000026; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		AA00001E /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		AA000020 /* ltx_generator.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = ltx_generator.py; sourceTree = "<group>"; };
 		AA000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA000026 /* APIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIServer.swift; sourceTree = "<group>"; };
 		AA000030 /* LTXVideoGenerator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LTXVideoGenerator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -115,6 +117,7 @@
 				AA000010 /* GenerationService.swift */,
 				AA000012 /* HistoryManager.swift */,
 				AA000014 /* PresetManager.swift */,
+				AA000026 /* APIServer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -223,6 +226,7 @@
 				AA000019 /* QueueView.swift in Sources */,
 				AA00001B /* HistoryView.swift in Sources */,
 				AA00001D /* PreferencesView.swift in Sources */,
+				AA000025 /* APIServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

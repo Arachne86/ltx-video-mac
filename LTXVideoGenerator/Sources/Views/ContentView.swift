@@ -125,52 +125,69 @@ struct SidebarButton: View {
 
 struct ModelStatusView: View {
     @EnvironmentObject var generationService: GenerationService
+    @StateObject private var apiServer = APIServer.shared
     
     var body: some View {
-        HStack(spacing: 8) {
-            statusIndicator
-            statusText
-            Spacer()
-            actionButton
+        VStack(spacing: 8) {
+            // Model status
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(generationService.isModelLoaded ? Color.green : Color.gray)
+                    .frame(width: 8, height: 8)
+                Text(generationService.isModelLoaded ? "Model Ready" : "Model Not Loaded")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if !generationService.isModelLoaded {
+                    Button("Load") {
+                        Task { await generationService.loadModel() }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                } else {
+                    Button("Unload") {
+                        Task { await generationService.unloadModel() }
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+            }
+            
+            Divider()
+            
+            // API Server toggle
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(apiServer.isRunning ? Color.green : Color.gray)
+                    .frame(width: 8, height: 8)
+                Text("API Server")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if apiServer.isRunning {
+                    Text(":\(apiServer.port)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.tertiary)
+                }
+                Toggle("", isOn: Binding(
+                    get: { apiServer.isRunning },
+                    set: { newValue in
+                        if newValue {
+                            apiServer.start(generationService: generationService)
+                        } else {
+                            apiServer.stop()
+                        }
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
-    }
-    
-    private var statusIndicator: some View {
-        Circle()
-            .fill(generationService.isModelLoaded ? Color.green : Color.gray)
-            .frame(width: 8, height: 8)
-    }
-    
-    private var statusText: some View {
-        Text(generationService.isModelLoaded ? "Model Ready" : "Model Not Loaded")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder
-    private var actionButton: some View {
-        if !generationService.isModelLoaded {
-            Button("Load") {
-                Task {
-                    await generationService.loadModel()
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-        } else {
-            Button("Unload") {
-                Task {
-                    await generationService.unloadModel()
-                }
-            }
-            .buttonStyle(.borderless)
-            .controlSize(.small)
-        }
     }
 }
 

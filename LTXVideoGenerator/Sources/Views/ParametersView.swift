@@ -7,6 +7,9 @@ struct ParametersView: View {
     @Binding var parameters: GenerationParameters
     @State private var showSavePreset = false
     @State private var newPresetName = ""
+    @State private var availableVRAM = getAvailableVRAM()
+    
+    let vramTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -216,10 +219,13 @@ struct ParametersView: View {
                         Spacer()
                         HStack(spacing: 4) {
                             Image(systemName: "memorychip")
-                            Text("\(getAvailableVRAM()) available")
+                            Text("\(availableVRAM) available")
                         }
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .onReceive(vramTimer) { _ in
+                            availableVRAM = getAvailableVRAM()
+                        }
                     }
                 }
                 .padding(.horizontal, 4)

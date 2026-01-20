@@ -5,6 +5,17 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2025-01-20
+
+### Added
+- REST API server (toggle in sidebar) for MCP integration on port 8420
+  - GET / - API info
+  - GET /status - Server and model status
+  - GET /queue - Current generation queue
+  - POST /generate - Submit generation request
+  - DELETE /queue/:id - Cancel queued request
+- VRAM display now refreshes every 5 seconds
+
 ## [1.0.5] - 2025-01-20
 
 ### Added
