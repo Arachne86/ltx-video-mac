@@ -128,8 +128,8 @@ struct ParametersView: View {
                             get: { Double(parameters.numFrames) },
                             set: { parameters.numFrames = Int($0) }
                         ),
-                        range: 25...193,
-                        step: 24,
+                        range: 25...1000,
+                        step: 25,
                         icon: "film.stack"
                     )
                     
@@ -141,11 +141,20 @@ struct ParametersView: View {
                         
                         Picker("", selection: $parameters.fps) {
                             Text("12 fps").tag(12)
+                            Text("20 fps").tag(20)
                             Text("24 fps").tag(24)
                             Text("30 fps").tag(30)
                         }
                         .pickerStyle(.segmented)
                     }
+                    
+                    // Video length estimate
+                    HStack {
+                        Image(systemName: "film")
+                        Text("Video Length: \(parameters.videoLength)")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     
                     Divider()
                     

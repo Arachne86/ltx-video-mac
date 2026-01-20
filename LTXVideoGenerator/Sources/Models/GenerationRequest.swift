@@ -90,4 +90,15 @@ struct GenerationParameters: Codable, Equatable, Hashable {
             return "\(minutes)m \(seconds)s"
         }
     }
+    
+    var videoLength: String {
+        let totalSeconds = Double(numFrames) / Double(fps)
+        if totalSeconds < 60 {
+            return String(format: "%.1fs", totalSeconds)
+        } else {
+            let minutes = Int(totalSeconds) / 60
+            let seconds = totalSeconds.truncatingRemainder(dividingBy: 60)
+            return String(format: "%dm %.1fs", minutes, seconds)
+        }
+    }
 }

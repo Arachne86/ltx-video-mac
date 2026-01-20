@@ -13,7 +13,7 @@ struct ContentView: View {
     
     enum Tab: String, CaseIterable {
         case generate = "Generate"
-        case history = "History"
+        case history = "Video Archive"
     }
     
     var body: some View {
@@ -52,7 +52,7 @@ struct ContentView: View {
             ForEach(Tab.allCases, id: \.self) { tab in
                 SidebarButton(
                     title: tab.rawValue,
-                    icon: tab == .generate ? "wand.and.stars" : "clock.arrow.circlepath",
+                    icon: tab == .generate ? "wand.and.stars" : "film.stack",
                     isSelected: selectedTab == tab,
                     badge: tab == .generate ? generationService.queue.count : nil
                 ) {

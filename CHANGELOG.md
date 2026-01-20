@@ -5,6 +5,14 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-01-09
+
+### Changed
+- Increased max frames from 193 to 1000 for longer videos
+- Added 20 FPS option
+- Renamed "History" tab to "Video Archive"
+- Added real-time video length estimate that updates with FPS/frames changes
+
 ## [1.0.3] - 2025-01-09
 
 ### Fixed
