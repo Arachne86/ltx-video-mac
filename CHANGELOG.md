@@ -5,6 +5,15 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-01-20
+
+### Added
+- Display available VRAM in bottom right of parameters panel
+- Estimated VRAM usage calculation
+
+### Changed
+- Max frames set to 505 (step of 8)
+
 ## [1.0.4] - 2025-01-09
 
 ### Changed

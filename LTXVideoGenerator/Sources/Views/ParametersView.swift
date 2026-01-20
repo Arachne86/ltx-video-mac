@@ -1,4 +1,5 @@
 import SwiftUI
+import Metal
 
 struct ParametersView: View {
     @EnvironmentObject var presetManager: PresetManager
@@ -133,6 +134,16 @@ struct ParametersView: View {
                         icon: "film.stack"
                     )
                     
+                    if parameters.numFrames > 500 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("High frame count may exceed GPU memory")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
                     // FPS
                     VStack(alignment: .leading, spacing: 8) {
                         Label("FPS", systemImage: "speedometer")
@@ -197,6 +208,19 @@ struct ParametersView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
+                    
+                    Spacer()
+                    
+                    // VRAM info
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "memorychip")
+                            Text("\(getAvailableVRAM()) available")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    }
                 }
                 .padding(.horizontal, 4)
             }
@@ -280,6 +304,17 @@ struct SavePresetSheet: View {
         .padding()
         .frame(width: 300)
     }
+}
+
+private func getAvailableVRAM() -> String {
+    guard let device = MTLCreateSystemDefaultDevice() else {
+        return "N/A"
+    }
+    
+    // On Apple Silicon, recommendedMaxWorkingSetSize gives us usable memory
+    let bytes = device.recommendedMaxWorkingSetSize
+    let gb = Double(bytes) / 1_073_741_824.0
+    return String(format: "%.0fGB", gb)
 }
 
 #Preview {

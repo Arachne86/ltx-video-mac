@@ -101,4 +101,11 @@ struct GenerationParameters: Codable, Equatable, Hashable {
             return String(format: "%dm %.1fs", minutes, seconds)
         }
     }
+    
+    var estimatedVRAM: Int {
+        // Rough estimate: ~100MB per frame at 512x320, scales with resolution
+        let baseVRAM = Double(numFrames) * 0.1
+        let resolutionScale = Double(width * height) / (512.0 * 320.0)
+        return Int(baseVRAM * resolutionScale)
+    }
 }

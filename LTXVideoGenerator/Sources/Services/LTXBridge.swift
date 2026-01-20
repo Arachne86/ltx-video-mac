@@ -279,6 +279,9 @@ except Exception as e:
                 // Metal/MPS - use defaults, don't inherit app's GPU state
                 env["MTL_ENABLE_DEBUG_INFO"] = "0"
                 
+                // Allow PyTorch MPS to use all available unified memory (disable 70% limit)
+                env["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+                
                 process.environment = env
                 
                 let stdoutPipe = Pipe()
