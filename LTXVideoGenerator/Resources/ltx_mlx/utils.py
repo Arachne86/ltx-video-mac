@@ -13,18 +13,43 @@ import sys
 
 def get_model_path(model_repo: str):
     """Get or download LTX-2 model path."""
+    # Required files for LTX-2 model
+    required_files = [
+        "ltx-2-19b-distilled.safetensors",
+        "ltx-2-spatial-upscaler-x2-1.0.safetensors",
+    ]
+    
     try:
-        return Path(snapshot_download(repo_id=model_repo, local_files_only=True))
+        path = Path(snapshot_download(repo_id=model_repo, local_files_only=True))
+        # Verify required files actually exist
+        missing_files = [f for f in required_files if not (path / f).exists()]
+        if missing_files:
+            raise FileNotFoundError(f"Missing required files: {missing_files}")
+        return path
     except Exception:
         print("DOWNLOAD:START:" + model_repo, file=sys.stderr)
-        print("Downloading LTX-2 model weights...", file=sys.stderr)
+        print("Downloading LTX-2 model weights (this may take a while)...",
+              file=sys.stderr)
+        sys.stderr.flush()
         path = Path(snapshot_download(
             repo_id=model_repo,
             local_files_only=False,
             resume_download=True,
             allow_patterns=["*.safetensors", "*.json"],
         ))
+        # Verify download completed successfully
+        missing_files = [f for f in required_files if not (path / f).exists()]
+        if missing_files:
+            msg = f"ERROR: Download incomplete. Missing: {missing_files}"
+            print(msg, file=sys.stderr)
+            print("Please check your internet connection and try again.",
+                  file=sys.stderr)
+            sys.stderr.flush()
+            raise FileNotFoundError(
+                f"Download failed - missing: {missing_files}"
+            )
         print("DOWNLOAD:COMPLETE:" + model_repo, file=sys.stderr)
+        sys.stderr.flush()
         return path
 
 

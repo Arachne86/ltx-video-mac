@@ -136,8 +136,13 @@ def generate_video(
     mode_str = "I2V" if is_i2v else "T2V"
     status_output(f"Starting {mode_str} generation: {width}x{height}, {num_frames} frames")
     
-    # Get model path
-    model_path = get_model_path(model_repo)
+    # Get model path (may trigger download if not cached)
+    status_output("Checking/downloading model weights...")
+    try:
+        model_path = get_model_path(model_repo)
+    except FileNotFoundError as e:
+        status_output(f"ERROR: {e}")
+        raise
     text_encoder_path = model_path if text_encoder_repo is None else get_model_path(text_encoder_repo)
     
     # Calculate latent dimensions
@@ -164,7 +169,12 @@ def generate_video(
     
     # Load transformer
     status_output("Loading transformer model...")
-    raw_weights = mx.load(str(model_path / 'ltx-2-19b-distilled.safetensors'))
+    transformer_file = model_path / 'ltx-2-19b-distilled.safetensors'
+    if not transformer_file.exists():
+        status_output(f"ERROR: Model file not found: {transformer_file}")
+        status_output("The model may not have downloaded correctly. Please try again.")
+        raise FileNotFoundError(f"Model file not found: {transformer_file}")
+    raw_weights = mx.load(str(transformer_file))
     sanitized = sanitize_transformer_weights(raw_weights)
     sanitized = {k: v.astype(mx.bfloat16) if v.dtype == mx.float32 else v for k, v in sanitized.items()}
     
@@ -245,7 +255,11 @@ def generate_video(
     
     # Upsample latents
     status_output("Upsampling latents 2x...")
-    upsampler = load_upsampler(str(model_path / 'ltx-2-spatial-upscaler-x2-1.0.safetensors'))
+    upsampler_file = model_path / 'ltx-2-spatial-upscaler-x2-1.0.safetensors'
+    if not upsampler_file.exists():
+        status_output(f"ERROR: Upsampler file not found: {upsampler_file}")
+        raise FileNotFoundError(f"Upsampler file not found: {upsampler_file}")
+    upsampler = load_upsampler(str(upsampler_file))
     mx.eval(upsampler.parameters())
     
     vae_decoder = load_vae_decoder(str(model_path / 'ltx-2-19b-distilled.safetensors'), timestep_conditioning=None)
