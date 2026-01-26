@@ -16,19 +16,20 @@ class DownloadProgressBar(tqdm):
     """Custom tqdm that outputs progress for Swift GUI parsing."""
 
     def __init__(self, *args, **kwargs):
-        # Disable default tqdm output
+        # Filter out kwargs that tqdm doesn't understand
+        # huggingface_hub passes 'name' which tqdm rejects
+        kwargs.pop('name', None)
         kwargs['disable'] = False
         kwargs['file'] = sys.stderr
-        super().__init__(*args, **kwargs)
         self._last_reported = -1
+        super().__init__(*args, **kwargs)
 
     def update(self, n=1):
         super().update(n)
         # Output progress in parseable format
-        if self.total and self.total > 0:
-            current = self.n
-            total = self.total
-            # Only report when percentage changes to avoid spam
+        total = getattr(self, 'total', None)
+        current = getattr(self, 'n', 0)
+        if total and total > 0:
             pct = int(100 * current / total)
             if pct != self._last_reported:
                 self._last_reported = pct
@@ -37,8 +38,10 @@ class DownloadProgressBar(tqdm):
                 sys.stderr.flush()
 
     def close(self):
-        if self.total and self.n >= self.total:
-            print(f"DOWNLOAD:PROGRESS:{self.total}:{self.total}:100%",
+        total = getattr(self, 'total', None)
+        current = getattr(self, 'n', 0)
+        if total and current >= total:
+            print(f"DOWNLOAD:PROGRESS:{total}:{total}:100%",
                   file=sys.stderr)
             sys.stderr.flush()
         super().close()
