@@ -328,16 +328,21 @@ except Exception as e:
             }
         }
         
-        // Parse JSON output
-        if let data = output.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let videoPath = json["video_path"] as? String,
-           let resultSeed = json["seed"] as? Int {
-            progressHandler(1.0, "Complete!")
-            return (videoPath, resultSeed)
+        // Parse JSON output - extract JSON from output (may have other text before it)
+        // Look for JSON object starting with { and ending with }
+        if let jsonStart = output.range(of: "{\"video_path\""),
+           let jsonEnd = output.range(of: "}", range: jsonStart.lowerBound..<output.endIndex) {
+            let jsonString = String(output[jsonStart.lowerBound...jsonEnd.lowerBound])
+            if let data = jsonString.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let videoPath = json["video_path"] as? String,
+               let resultSeed = json["seed"] as? Int {
+                progressHandler(1.0, "Complete!")
+                return (videoPath, resultSeed)
+            }
         }
         
-        throw LTXError.generationFailed("Failed to parse generation output: \(output)")
+        throw LTXError.generationFailed("Failed to parse generation output: \(output) and log: \(errorOutput)")
     }
     
     func unloadModel() async {
