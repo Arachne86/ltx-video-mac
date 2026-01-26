@@ -131,8 +131,16 @@ class GenerationService: ObservableObject {
         let request = queue[index]
         let startTime = Date()
         
-        // Generate output path
-        let outputDir = historyManager.videosDirectory
+        // Generate output path - use user preference if set, otherwise default location
+        let userOutputDir = UserDefaults.standard.string(forKey: "outputDirectory") ?? ""
+        let outputDir: URL
+        if userOutputDir.isEmpty {
+            outputDir = historyManager.videosDirectory
+        } else {
+            outputDir = URL(fileURLWithPath: userOutputDir)
+            // Ensure directory exists
+            try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        }
         let filename = "\(request.id.uuidString).mp4"
         let outputPath = outputDir.appendingPathComponent(filename).path
         
