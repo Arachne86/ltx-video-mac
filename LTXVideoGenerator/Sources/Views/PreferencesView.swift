@@ -131,15 +131,24 @@ struct PreferencesView: View {
                                 
                                 // Offer to install missing packages
                                 if !details.missingPackages.isEmpty {
-                                    VStack(alignment: .leading, spacing: 4) {
+                                    VStack(alignment: .leading, spacing: 8) {
                                         Text("Install missing packages:")
                                             .font(.caption.bold())
-                                        Text("pip install \(details.missingPackages.joined(separator: " "))")
-                                            .font(.caption.monospaced())
-                                            .textSelection(.enabled)
-                                            .padding(6)
-                                            .background(Color.secondary.opacity(0.1))
-                                            .cornerRadius(4)
+                                        
+                                        HStack {
+                                            Text("pip install \(details.missingPackages.joined(separator: " "))")
+                                                .font(.caption.monospaced())
+                                                .textSelection(.enabled)
+                                                .padding(6)
+                                                .background(Color.secondary.opacity(0.1))
+                                                .cornerRadius(4)
+                                            
+                                            Button("Install") {
+                                                installMissingPackages(pythonPath: details.executablePath, packages: details.missingPackages)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .disabled(isInstalling)
+                                        }
                                     }
                                     .padding(.top, 4)
                                 }
