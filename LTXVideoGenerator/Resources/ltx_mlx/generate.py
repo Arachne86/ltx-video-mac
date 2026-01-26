@@ -106,7 +106,7 @@ def denoise(latents: mx.array, positions: mx.array, text_embeddings: mx.array, t
 
 
 def generate_video(
-    model_repo: str = "Lightricks/LTX-2",
+    model_repo: str = "mlx-community/LTX-2-distilled-bf16",
     text_encoder_repo: str = None,
     prompt: str = "",
     height: int = 512,
@@ -373,7 +373,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", "-s", type=int, default=42, help="Random seed")
     parser.add_argument("--fps", type=int, default=24, help="FPS")
     parser.add_argument("--output-path", type=str, default="output.mp4", help="Output path")
-    parser.add_argument("--model-repo", type=str, default="Lightricks/LTX-2", help="Model repo")
+    parser.add_argument("--model-repo", type=str, default="mlx-community/LTX-2-distilled-bf16", help="Model repo")
     parser.add_argument("--image", "-i", type=str, default=None, help="Conditioning image")
     parser.add_argument("--image-strength", type=float, default=1.0, help="Image conditioning strength")
     parser.add_argument("--tiling", type=str, default="auto", choices=["auto", "none", "default", "aggressive", "conservative", "spatial", "temporal"], help="Tiling mode")

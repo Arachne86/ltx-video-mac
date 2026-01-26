@@ -19,7 +19,7 @@ enum LTXModelVariant: String, CaseIterable, Identifiable {
     
     var modelRepo: String {
         switch self {
-        case .distilled: return "Lightricks/LTX-2"
+        case .distilled: return "mlx-community/LTX-2-distilled-bf16"
         }
     }
     

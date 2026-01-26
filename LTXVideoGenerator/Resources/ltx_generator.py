@@ -24,7 +24,7 @@ def main():
     parser.add_argument("--seed", "-s", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--fps", type=int, default=24, help="Frames per second")
     parser.add_argument("--output-path", "-o", type=str, default="output.mp4", help="Output video path")
-    parser.add_argument("--model-repo", type=str, default="Lightricks/LTX-2", help="Model repository ID")
+    parser.add_argument("--model-repo", type=str, default="mlx-community/LTX-2-distilled-bf16", help="Model repository ID")
     parser.add_argument("--image", "-i", type=str, default=None, help="Input image for image-to-video generation")
     parser.add_argument("--image-strength", type=float, default=1.0, help="Image conditioning strength (0.0-1.0)")
     parser.add_argument("--tiling", type=str, default="auto", 
