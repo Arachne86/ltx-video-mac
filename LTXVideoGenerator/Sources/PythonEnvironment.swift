@@ -9,8 +9,9 @@ struct PythonDetails {
     let hasRequiredPackages: Bool
     let missingPackages: [String]
     let needsDiffusersGit: Bool  // True if LTX2Pipeline not available
+    let mpsPatchApplied: Bool    // True if MPS float64 fix has been applied
     
-    init(version: String, executablePath: String, dylibPath: String?, pythonHome: String, hasRequiredPackages: Bool, missingPackages: [String], needsDiffusersGit: Bool = false) {
+    init(version: String, executablePath: String, dylibPath: String?, pythonHome: String, hasRequiredPackages: Bool, missingPackages: [String], needsDiffusersGit: Bool = false, mpsPatchApplied: Bool = false) {
         self.version = version
         self.executablePath = executablePath
         self.dylibPath = dylibPath
@@ -18,6 +19,7 @@ struct PythonDetails {
         self.hasRequiredPackages = hasRequiredPackages
         self.missingPackages = missingPackages
         self.needsDiffusersGit = needsDiffusersGit
+        self.mpsPatchApplied = mpsPatchApplied
     }
 }
 
@@ -252,6 +254,52 @@ class PythonEnvironment {
             }
         }
         
+        // Step 9: Check if MPS patch is applied (and apply it if not)
+        var mpsPatchApplied = false
+        if !needsDiffusersGit && missingPackages.isEmpty {
+            let checkPatchScript = """
+import os
+import site
+
+def find_diffusers_path():
+    for path in site.getsitepackages():
+        dp = os.path.join(path, "diffusers")
+        if os.path.exists(dp):
+            return dp
+    user_site = site.getusersitepackages()
+    if user_site:
+        dp = os.path.join(user_site, "diffusers")
+        if os.path.exists(dp):
+            return dp
+    return None
+
+dp = find_diffusers_path()
+if dp:
+    connectors = os.path.join(dp, "pipelines", "ltx2", "connectors.py")
+    if os.path.exists(connectors):
+        with open(connectors, 'r') as f:
+            content = f.read()
+        if "MPS fix" in content or "freqs_dtype = torch.float32" in content:
+            print("PATCHED")
+        else:
+            print("NEEDS_PATCH")
+    else:
+        print("NO_CONNECTORS")
+else:
+    print("NO_DIFFUSERS")
+"""
+            let patchCheckResult = runPythonSync(executable: executablePath, script: checkPatchScript)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            
+            if patchCheckResult == "PATCHED" {
+                mpsPatchApplied = true
+            } else if patchCheckResult == "NEEDS_PATCH" {
+                // Auto-apply the MPS patch
+                let patchResult = await patchDiffusersForMPS(pythonExecutable: executablePath)
+                mpsPatchApplied = patchResult.success
+            }
+        }
+        
         let hasRequired = missingPackages.isEmpty && !needsDiffusersGit
         
         let details = PythonDetails(
@@ -261,7 +309,8 @@ class PythonEnvironment {
             pythonHome: pythonHome,
             hasRequiredPackages: hasRequired,
             missingPackages: missingPackages,
-            needsDiffusersGit: needsDiffusersGit
+            needsDiffusersGit: needsDiffusersGit,
+            mpsPatchApplied: mpsPatchApplied
         )
         
         if !missingPackages.isEmpty {
@@ -541,6 +590,114 @@ class PythonEnvironment {
             }
         } catch {
             return (false, "Failed to run pip: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Patch diffusers for MPS compatibility (fixes float64 error in LTX-2)
+    /// Based on fix from https://github.com/Pocket-science/ltx2-mps
+    func patchDiffusersForMPS(pythonExecutable: String) async -> (success: Bool, message: String) {
+        // Python script to find and patch diffusers
+        let patchScript = """
+import os
+import sys
+import site
+
+def find_diffusers_path():
+    for path in site.getsitepackages():
+        diffusers_path = os.path.join(path, "diffusers")
+        if os.path.exists(diffusers_path):
+            return diffusers_path
+    user_site = site.getusersitepackages()
+    if user_site:
+        diffusers_path = os.path.join(user_site, "diffusers")
+        if os.path.exists(diffusers_path):
+            return diffusers_path
+    return None
+
+def patch_file(filepath, old_text, new_text, description):
+    if not os.path.exists(filepath):
+        return f"skip: {filepath} not found"
+    
+    with open(filepath, 'r') as f:
+        content = f.read()
+    
+    if new_text in content:
+        return f"ok: {description} (already patched)"
+    
+    if old_text not in content:
+        return f"skip: {description} (pattern not found)"
+    
+    content = content.replace(old_text, new_text)
+    
+    with open(filepath, 'w') as f:
+        f.write(content)
+    
+    return f"patched: {description}"
+
+diffusers_path = find_diffusers_path()
+if not diffusers_path:
+    print("ERROR: diffusers not found", file=sys.stderr)
+    sys.exit(1)
+
+print(f"Found diffusers at: {diffusers_path}")
+
+results = []
+
+# Patch 1: connectors.py
+connectors_path = os.path.join(diffusers_path, "pipelines", "ltx2", "connectors.py")
+result1 = patch_file(
+    connectors_path,
+    "freqs_dtype = torch.float64 if self.double_precision else torch.float32",
+    "# MPS fix: force float32 as MPS doesn't support float64\\n        freqs_dtype = torch.float32",
+    "connectors.py RoPE dtype"
+)
+results.append(result1)
+
+# Patch 2: transformer_ltx2.py
+transformer_path = os.path.join(diffusers_path, "models", "transformers", "transformer_ltx2.py")
+result2 = patch_file(
+    transformer_path,
+    "        # 3. Create a 1D grid of frequencies for RoPE\\n        freqs_dtype = torch.float64 if self.double_precision else torch.float32",
+    "        # 3. Create a 1D grid of frequencies for RoPE\\n        # MPS fix: force float32 as MPS doesn't support float64\\n        freqs_dtype = torch.float32",
+    "transformer_ltx2.py RoPE dtype"
+)
+results.append(result2)
+
+for r in results:
+    print(r)
+
+print("\\nMPS patch complete!")
+"""
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: pythonExecutable)
+        process.arguments = ["-c", patchScript]
+        
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:" + (env["PATH"] ?? "")
+        process.environment = env
+        
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            
+            let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: outputData, encoding: .utf8) ?? ""
+            let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+            
+            if process.terminationStatus == 0 {
+                return (true, output)
+            } else {
+                return (false, "Patch failed:\n\(errorOutput)\n\(output)")
+            }
+        } catch {
+            return (false, "Failed to run patch: \(error.localizedDescription)")
         }
     }
     
