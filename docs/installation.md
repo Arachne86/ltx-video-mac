@@ -25,127 +25,134 @@ Complete setup instructions for LTX Video Generator.
 3. Open the DMG and drag **LTX Video Generator** to your Applications folder
 4. Right-click the app and select **Open** (required for first launch of notarized apps)
 
-## Install Python Dependencies
+## Configure Python
 
-LTX Video Generator requires Python with PyTorch and the diffusers library. We recommend using a virtual environment.
+LTX Video Generator needs Python 3.10+ with MLX and related packages.
 
-### Option 1: Virtual Environment (Recommended)
-
-```bash
-# Create a dedicated virtual environment
-python3 -m venv ~/ltx-venv
-
-# Activate it
-source ~/ltx-venv/bin/activate
-
-# Install PyTorch with MPS support
-pip install torch torchvision torchaudio
-
-# IMPORTANT: LTX-2 requires diffusers from git (not released to PyPI yet)
-pip install git+https://github.com/huggingface/diffusers.git
-
-# Install other dependencies
-pip install accelerate transformers safetensors sentencepiece numpy
-
-# Install video export dependencies  
-pip install imageio imageio-ffmpeg opencv-python
-
-# Verify installation
-python -c "import torch; print(f'PyTorch {torch.__version__}, MPS: {torch.backends.mps.is_available()}')"
-python -c "from diffusers import LTX2Pipeline; print('LTX2Pipeline OK')"
-```
-
-{: .warning }
-LTX-2 support is in the diffusers development branch. You **must** install from git, not pip.
-
-### Option 2: Using pyenv
-
-```bash
-# Install Python 3.11 via pyenv
-pyenv install 3.11.9
-pyenv local 3.11.9
-
-# Install packages globally or in a virtualenv
-pip install torch torchvision torchaudio
-pip install diffusers accelerate transformers safetensors sentencepiece
-pip install imageio imageio-ffmpeg opencv-python
-```
-
-### Option 3: Conda/Miniforge
-
-```bash
-# Create conda environment
-conda create -n ltx python=3.11
-conda activate ltx
-
-# Install PyTorch
-pip install torch torchvision torchaudio
-
-# Install other dependencies
-pip install diffusers accelerate transformers safetensors sentencepiece
-pip install imageio imageio-ffmpeg opencv-python
-```
-
-## Configure the App
+### Step 1: Open Preferences
 
 1. Launch **LTX Video Generator**
 2. Open **Preferences** (⌘,)
-3. In the **Python Path** field, enter your Python executable:
-   - Virtual env: `~/ltx-venv/bin/python3`
-   - pyenv: `~/.pyenv/versions/3.11.9/bin/python3`
-   - Conda: `~/miniforge3/envs/ltx/bin/python`
-4. Click **Validate** to verify the configuration
-5. You should see a green checkmark and version information
+3. Click **Auto Detect** to find your Python installation
 
-## First Run
+The app will search common locations including Homebrew, pyenv, conda, and system Python.
 
-On your first generation:
+### Step 2: Validate Setup
 
-1. The app will download the LTX-2 model (~20-40GB depending on variant)
-2. This may take 10-30 minutes depending on your internet connection
-3. The model is cached locally for future use
-4. Subsequent generations will start much faster
+Click **Validate Setup** to check for required packages:
+- `mlx` - Apple's machine learning framework
+- `mlx-vlm` - Vision-language models for MLX
+- `transformers` - Hugging Face transformers
+- `safetensors` - Fast tensor serialization
+- `huggingface_hub` - Model downloading
+- `numpy` - Numerical computing
+- `opencv-python` - Video encoding
+- `tqdm` - Progress bars
 
-### Model Variants
+### Step 3: Install Missing Packages
 
-You can select your preferred model in **Preferences > Model**:
-- **Full (19B)** - Best quality, largest download
-- **Distilled** - Same size, but only needs 8 inference steps
-- **FP8** - Quantized, smaller memory footprint
+If packages are missing, you have two options:
 
-### Model Storage Location
+**Option A: One-Click Install (Recommended)**
 
-The model is cached by Hugging Face in:
+Click the **Install Missing Packages** button in Preferences. The app will run pip install automatically.
+
+**Option B: Manual Install**
+
+```bash
+pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
-~/.cache/huggingface/hub/
-```
+
+{: .note }
+If using a virtual environment, make sure to activate it first, or point the app to the venv's Python executable.
+
+## First Run - Model Download
 
 {: .warning }
-LTX-2 is a large model. Ensure you have at least 50GB free disk space for model downloads.
+**Important**: On your first generation, the app will download the LTX-2 model (~90GB) from Hugging Face. This is a one-time download.
+
+### What to Expect
+
+1. Start a generation with any prompt
+2. Progress shows "Downloading model..." with percentage
+3. Download takes 30-60 minutes depending on connection speed
+4. Model is cached in `~/.cache/huggingface/hub/`
+5. Subsequent runs skip the download
+
+### Download Progress
+
+The app shows real-time download progress:
+- `Downloading: 14.8GB / 77.8GB (19%)`
+
+If download is interrupted, it will resume from where it left off.
+
+### Storage Location
+
+Models are cached by Hugging Face in:
+```
+~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16/
+```
+
+To free up space later, you can delete this folder (the model will re-download on next use).
 
 ## Verify Installation
 
 To verify everything is working:
 
 1. Enter a simple prompt: `"A river flowing through a forest"`
-2. Use the **Fast Preview** preset
+2. Use the **Quick Preview** preset (512x320, 49 frames)
 3. Click **Generate**
-4. Watch the progress in the Queue sidebar
-5. Your video should appear in History when complete
+4. Watch progress in the Queue sidebar
+5. Your video should appear when complete
+
+## Installing Python
+
+If you don't have Python installed, here are your options:
+
+### Homebrew (Recommended)
+
+```bash
+brew install python@3.12
+```
+
+Python will be at `/opt/homebrew/bin/python3.12`
+
+### pyenv
+
+```bash
+# Install pyenv
+brew install pyenv
+
+# Install Python
+pyenv install 3.12
+
+# Set as default
+pyenv global 3.12
+```
+
+### System Python
+
+macOS includes Python, but you may need to install Xcode Command Line Tools:
+
+```bash
+xcode-select --install
+```
 
 ## Troubleshooting
 
-### "Python not configured"
-- Make sure you've set the Python path in Preferences
-- Verify the path exists: `ls -la /path/to/python3`
+### "Python not found"
+- Click **Auto Detect** in Preferences
+- Or manually enter the path to your Python executable
+- Verify it exists: `which python3`
 
-### "Module not found" errors
-- Activate your virtual environment before checking
-- Run `pip list` to verify packages are installed
+### "Missing packages" after install
+- Make sure you're using the same Python the app is configured to use
+- Try: `/path/to/your/python3 -m pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm`
 
-### MPS not available
-- Ensure you're on Apple Silicon (M1/M2/M3/M4)
-- Update to the latest PyTorch version
-- Check: `python -c "import torch; print(torch.backends.mps.is_available())"`
+### "Out of memory" during generation
+- Use smaller resolution (512x320)
+- Reduce frame count
+- Close other applications
+- 32GB RAM minimum required
 
 See the [Troubleshooting Guide](troubleshooting) for more solutions.

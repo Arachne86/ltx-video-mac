@@ -19,24 +19,25 @@ Transform text into stunning AI-generated videos on your Mac.
 
 ## Native macOS Experience
 
-LTX Video Generator is a beautiful, native macOS application built with SwiftUI. It harnesses the power of Apple Silicon to generate AI videos with synchronized audio directly on your Mac using the LTX-2 model from Lightricks.
+LTX Video Generator is a beautiful, native macOS application built with SwiftUI. It runs the LTX-2 model natively on Apple Silicon using MLX (Apple's machine learning framework) for optimal performance.
 
 ### Key Features
 
-- **Apple Silicon Optimized** - Leverages Metal Performance Shaders (MPS) for fast GPU-accelerated generation
-- **LTX-2 Model** - Latest 19B audio-video foundation model generates video with synchronized audio
-- **Model Variants** - Choose between Full (best quality), Distilled (fast), or FP8 (low memory)
-- **Intuitive Interface** - Clean, native macOS design that feels right at home
+- **Apple Silicon Native** - Uses MLX for optimal M1/M2/M3/M4 performance
+- **LTX-2 Model** - 19B parameter video generation model from Lightricks
+- **Text-to-Video** - Generate videos from text descriptions
+- **Image-to-Video** - Animate images into videos
+- **Auto Package Installer** - Missing Python packages detected and installed with one click
 - **Generation Queue** - Queue multiple videos and track progress in real-time
-- **Smart History** - Browse, preview, and manage all your generated videos with thumbnails
+- **Smart History** - Browse, preview, and manage all your generated videos
 - **Flexible Presets** - Quick access to common configurations or customize every parameter
 
 ## Quick Start
 
 1. **Download** the app from the [Releases page](https://github.com/james-see/ltx-video-mac/releases)
-2. **Install Python dependencies** (see [Installation Guide](installation))
-3. **Configure** your Python path in Preferences
-4. **Generate** your first video!
+2. **Open Preferences** and click Auto Detect to find Python
+3. **Install packages** if prompted (one-click install available)
+4. **Generate** your first video! (model downloads on first run)
 
 ## System Requirements
 
@@ -45,17 +46,17 @@ LTX Video Generator is a beautiful, native macOS application built with SwiftUI.
 | macOS | 14.0+ | 15.0+ |
 | Processor | Apple M1 | Apple M2 Pro/M3/M4 |
 | Unified Memory | 32GB | 64GB+ |
-| Storage | 50GB free | 100GB+ free |
+| Storage | 100GB free | 150GB+ free |
 | Python | 3.10+ | 3.12+ |
 
-{: .note }
-LTX-2 is a 19B parameter model requiring significant unified memory. For systems with less RAM, use the **Distilled** or **FP8** model variants in Preferences.
+{: .warning }
+**First Run Download**: The LTX-2 model (~90GB) downloads automatically on first generation. This is a one-time download cached in `~/.cache/huggingface/`.
 
 ## Sample Results
 
 Generate videos like:
 - "A river flowing through a misty forest at dawn"
-- "The camera slowly pans across a futuristic cityscape"
+- "The camera slowly pans across a futuristic cityscape"  
 - "Golden leaves falling in slow motion against a blue sky"
 
 ---

@@ -18,18 +18,17 @@ Detailed explanation of all generation parameters for LTX-2.
 
 ---
 
-## Model Variants
+## Model
 
-Select your model variant in **Preferences > Model**:
+The app uses **LTX-2 Distilled** running on MLX (Apple's machine learning framework).
 
-| Variant | Description | Steps | Guidance | Memory |
-|:--------|:------------|:------|:---------|:-------|
-| **Full (19B)** | Best quality | 40 | 4.0 | ~20GB |
-| **Distilled** | Fast previews | 8 | 1.0 | ~20GB |
-| **FP8** | Lower memory | 40 | 4.0 | ~12GB |
+| Model | Parameters | Size | Pipeline |
+|:------|:-----------|:-----|:---------|
+| LTX-2 Distilled | 19B | ~90GB | 2-stage generation |
 
-{: .note }
-The **Distilled** model automatically uses CFG=1.0 and ignores negative prompts (required by the model architecture).
+The 2-stage pipeline:
+1. **Stage 1:** Generate at half resolution
+2. **Stage 2:** Upsample and refine to full resolution
 
 ---
 
@@ -41,13 +40,13 @@ Controls the dimensions of the generated video in pixels.
 
 | Setting | Range | Default |
 |:--------|:------|:--------|
-| Width | 320-1024 | 768 |
-| Height | 320-768 | 512 |
+| Width | 320-1024 | 512 |
+| Height | 320-768 | 320 |
 
 **Tips:**
 - Both dimensions should be divisible by 64 for best results
 - Higher resolutions require more memory and time
-- Start with smaller sizes for testing
+- Start with smaller sizes (512x320) for testing
 
 ### Common Aspect Ratios
 
@@ -65,11 +64,14 @@ Controls the dimensions of the generated video in pixels.
 
 ### Number of Frames
 
-Total frames to generate. More frames = longer video. Frames must be 8n+1 (9, 17, 25, 33, 41, 49... 121, etc).
+Total frames to generate. More frames = longer video.
 
 | Setting | Range | Default |
 |:--------|:------|:--------|
-| Frames | 25-1000 | 121 |
+| Frames | 17-257 | 49 |
+
+{: .note }
+Frames are automatically adjusted to be 8n+1 (9, 17, 25, 33, 41, 49... 121, etc.) as required by the model.
 
 **Duration calculation:**
 ```
@@ -78,9 +80,8 @@ Duration (seconds) = Frames ÷ FPS
 
 Examples at 24 FPS:
 - 49 frames = ~2 seconds
-- 121 frames = ~5 seconds (default)
-- 241 frames = ~10 seconds
-- 481 frames = ~20 seconds
+- 97 frames = ~4 seconds
+- 121 frames = ~5 seconds
 
 ### FPS (Frames Per Second)
 
@@ -88,12 +89,12 @@ Playback speed of the generated video.
 
 | Setting | Range | Default |
 |:--------|:------|:--------|
-| FPS | 8-30 | 24 |
+| FPS | 12-30 | 24 |
 
 **Tips:**
 - 24 FPS: Cinematic feel
 - 30 FPS: Smooth motion
-- 12-15 FPS: Animation style
+- 12 FPS: Animation style
 
 ---
 
@@ -101,17 +102,13 @@ Playback speed of the generated video.
 
 ### Inference Steps
 
-Number of denoising steps. More steps = higher quality but slower.
+Number of denoising steps per stage.
 
 | Setting | Range | Default |
 |:--------|:------|:--------|
-| Steps | 10-100 | 40 |
+| Steps | 8-50 | 28 |
 
-**Recommendations by model:**
-- **Distilled model:** 8 steps (fixed, fast previews)
-- **Full/FP8 model:** 40 steps (balanced), 50+ for maximum quality
-
-The quality improvement diminishes after ~50 steps.
+The LTX-2 distilled model uses a fixed sigma schedule. More steps provide diminishing returns after ~30.
 
 ### Guidance Scale
 
@@ -119,14 +116,14 @@ How closely the model follows your prompt (CFG - Classifier-Free Guidance).
 
 | Setting | Range | Default |
 |:--------|:------|:--------|
-| Guidance | 1.0-15.0 | 4.0 |
+| Guidance | 1.0-10.0 | 4.0 |
 
 **Effects:**
-- **1.0:** No guidance (required for Distilled model)
-- **3-5:** Balanced adherence (recommended for LTX-2)
-- **6+:** Stronger prompt following, may reduce quality
+- **1.0:** Minimal guidance
+- **3-5:** Balanced adherence (recommended)
+- **6+:** Stronger prompt following
 
-**Recommended range:** 3.0 - 5.0 for LTX-2
+**Recommended:** 3.5 - 5.0 for LTX-2
 
 ---
 
@@ -142,9 +139,27 @@ Controls the randomness of generation.
 
 **Usage:**
 - **Same seed + same parameters = identical output**
-- Leave at -1 for random seed each time
+- Leave empty for random seed each time
 - Save the seed of good results to reproduce them
-- Try seeds ±1 from good results for variations
+- Try nearby seeds for variations
+
+---
+
+## Image-to-Video Settings
+
+When using image-to-video mode:
+
+### Image Strength
+
+How much the source image influences the output.
+
+| Setting | Range | Default |
+|:--------|:------|:--------|
+| Strength | 0.0-1.0 | 1.0 |
+
+- **1.0:** Strong influence, first frame closely matches image
+- **0.5:** Moderate influence
+- **0.0:** Image is ignored (text-to-video mode)
 
 ---
 
@@ -176,43 +191,37 @@ static, still image
 
 ## Presets
 
-Presets provide quick access to common configurations optimized for LTX-2:
+Presets provide quick access to common configurations:
 
 ### Quick Preview
 ```
 512×320, 49 frames, 20 steps, guidance 4.0
 ```
-Fast testing, ~1-2 minutes
+Fast testing, ~2-3 minutes
 
-### Standard (Default)
+### Standard
 ```
-768×512, 121 frames, 40 steps, guidance 4.0
+768×512, 97 frames, 28 steps, guidance 4.0
 ```
-Good balance, ~5 minutes
+Good balance, ~5-7 minutes
 
 ### High Quality
 ```
-768×512, 121 frames, 50 steps, guidance 4.0
+768×512, 121 frames, 28 steps, guidance 4.0
 ```
-Best results, ~7+ minutes
+Best results, longer duration
 
 ### Portrait
 ```
-512×768, 121 frames, 40 steps, guidance 4.0
+512×768, 97 frames, 28 steps, guidance 4.0
 ```
 Vertical format for mobile
 
 ### Square
 ```
-512×512, 121 frames, 40 steps, guidance 4.0
+512×512, 97 frames, 28 steps, guidance 4.0
 ```
 Social media format
-
-### Cinematic 21:9
-```
-768×320, 121 frames, 40 steps, guidance 4.0
-```
-Ultra-wide aspect ratio
 
 ---
 
@@ -222,28 +231,28 @@ Ultra-wide aspect ratio
 
 LTX-2 is a 19B parameter model requiring significant unified memory:
 
-| Model Variant | Base Memory | With Generation |
-|:--------------|:------------|:----------------|
-| Full (19B) | ~20GB | ~25-30GB |
-| Distilled | ~20GB | ~25-30GB |
-| FP8 | ~12GB | ~15-20GB |
+| Resolution | Approximate Memory |
+|:-----------|:------------------|
+| 512×320 | ~24-28GB |
+| 768×512 | ~28-32GB |
+| 1024×768 | ~35-40GB+ |
 
 ### Generation Time
 
-Rough estimates on M2 Max (64GB):
+Rough estimates on Apple Silicon:
 
-| Preset | Full Model | Distilled |
-|:-------|:-----------|:----------|
-| Quick Preview | 2-3 min | 30-60 sec |
-| Standard | 5-7 min | 1-2 min |
-| High Quality | 8-12 min | 2-3 min |
+| Mac | Quick Preview | Standard |
+|:----|:--------------|:---------|
+| M1 (16GB) | May fail | Not recommended |
+| M1 Pro (32GB) | 4-5 min | 8-10 min |
+| M2 Max (64GB) | 2-3 min | 5-7 min |
+| M3 Max (128GB) | 1-2 min | 3-5 min |
 
 Times vary based on:
-- Chip (M1/M2/M3/M4) and core count
+- Chip generation and core count
 - Unified memory amount
 - Other running applications
-- Number of frames
+- Resolution and frame count
 
-### Audio Generation
-
-LTX-2 generates synchronized audio with your video automatically. The audio is embedded in the output MP4 file.
+{: .warning }
+**32GB RAM minimum required.** Macs with 16GB will likely fail or be extremely slow. 64GB+ recommended for comfortable usage.

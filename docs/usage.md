@@ -37,26 +37,35 @@ Select a preset from the dropdown to quickly configure parameters:
 | Preset | Resolution | Frames | Steps | Best For |
 |:-------|:-----------|:-------|:------|:---------|
 | Quick Preview | 512×320 | 49 | 20 | Quick tests |
-| Standard | 768×512 | 121 | 40 | Balanced quality |
-| High Quality | 768×512 | 121 | 50 | Best results |
-| Portrait | 512×768 | 121 | 40 | Vertical videos |
-| Square | 512×512 | 121 | 40 | Social media |
-| Cinematic 21:9 | 768×320 | 121 | 40 | Wide format |
+| Standard | 768×512 | 97 | 28 | Balanced quality |
+| High Quality | 768×512 | 121 | 28 | Best results |
+| Portrait | 512×768 | 97 | 28 | Vertical videos |
+| Square | 512×512 | 97 | 28 | Social media |
 
 {: .tip }
-For faster iteration, select the **Distilled** model variant in Preferences. It generates videos in ~8 steps instead of 40.
+The LTX-2 Distilled model uses a 2-stage generation pipeline for high quality output.
 
 ### 3. Generate
 
-Click the **Generate** button. The button shows:
-- **Spinner** while generating
-- **"Complete!"** (green) when finished
+Click the **Generate** button. Progress shows:
+- Model loading status
+- Stage 1 and Stage 2 denoising progress
+- Video encoding and saving
 
 ### 4. View Results
 
-- **Queue** sidebar shows real-time progress with step count
+- **Queue** sidebar shows real-time progress
 - **History** tab displays all generated videos with thumbnails
-- Click a video to preview it with looping playback
+- Videos save to your configured output directory
+
+## Image-to-Video
+
+You can animate images into videos:
+
+1. Expand the **Image to Video** section
+2. Click **Select Image** to choose a source image
+3. Adjust **Image Strength** (1.0 = full influence, 0.0 = ignore image)
+4. The first frame will be conditioned on your image
 
 ## Writing Effective Prompts
 
@@ -117,7 +126,6 @@ Click the batch menu (stack icon) to:
 
 - **Cancel** the current generation with the X button
 - **Remove** pending items from the queue
-- **Reorder** items via right-click context menu
 - **Clear** the entire queue with the Clear button
 
 ## History Features
@@ -132,7 +140,7 @@ Click the batch menu (stack icon) to:
 
 Click a video to see:
 - Full video preview (loops automatically)
-- Original prompt and negative prompt
+- Original prompt
 - All generation parameters
 - Timestamp and generation duration
 - Seed value for reproducibility
@@ -141,15 +149,14 @@ Click a video to see:
 
 - **Show in Finder** - Reveal the video file
 - **Share** - Share via macOS share sheet
-- **Reuse Prompt** - Copy prompt to clipboard
-- **Regenerate** - Create again with same seed
-- **Delete** - Remove video and thumbnail
+- **Reuse Prompt** - Copy prompt back to input
+- **Delete** - Remove video
 
 ## Tips for Best Results
 
 ### Start Small
 
-- Use **Fast Preview** preset first
+- Use **Quick Preview** preset first
 - Iterate on prompts quickly
 - Only increase quality for final renders
 
@@ -170,4 +177,4 @@ worst quality, blurry, jittery, distorted, watermark
 
 - Higher resolutions use more memory
 - Close other apps if you encounter issues
-- The app automatically uses memory-efficient techniques
+- 32GB RAM minimum, 64GB recommended

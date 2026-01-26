@@ -26,67 +26,80 @@ Solutions for common issues.
 
 **Solution:**
 1. Open Preferences (⌘,)
-2. Enter the full path to your Python executable
-3. Click Validate
-4. Ensure you see version information
+2. Click **Auto Detect** to find Python automatically
+3. Or manually enter the path to your Python executable
+4. Click **Validate Setup**
 
 **Finding your Python path:**
 ```bash
-# Virtual environment
-~/ltx-venv/bin/python3
+# Homebrew
+/opt/homebrew/bin/python3
 
 # pyenv
-~/.pyenv/versions/3.11.9/bin/python3
+~/.pyenv/versions/3.12.x/bin/python3
+
+# System
+/usr/bin/python3
 
 # Check with which
 which python3
 ```
 
-### "Module not found" errors
+### "Missing packages" error
 
-**Problem:** Missing Python packages.
+**Problem:** Required Python packages not installed.
 
 **Solution:**
+
+**Option 1:** Click the **Install Missing Packages** button in Preferences (recommended)
+
+**Option 2:** Install manually:
 ```bash
-# Activate your environment first
-source ~/ltx-venv/bin/activate
-
-# IMPORTANT: Install diffusers from git for LTX-2 support
-pip install git+https://github.com/huggingface/diffusers.git
-
-# Install other packages
-pip install torch accelerate transformers
-pip install safetensors sentencepiece numpy
-pip install imageio imageio-ffmpeg opencv-python
+pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
 
-### "cannot import name 'LTX2Pipeline'"
+{: .note }
+Make sure you're installing to the same Python that the app is configured to use.
 
-**Problem:** diffusers installed from PyPI doesn't have LTX-2 support yet.
+---
+
+## Model Download Issues
+
+### Download stuck or very slow
+
+**Problem:** Model download appears stuck at a percentage.
+
+**Explanation:** The model is ~90GB. Progress updates every 1%, so each percent is ~900MB. Even at 100Mbps, each percent takes about 70 seconds.
+
+**Solutions:**
+1. Be patient - large model downloads take time
+2. Check your internet connection
+3. The download will resume if interrupted
+
+### "No space left on device"
+
+**Problem:** Not enough disk space for model download.
 
 **Solution:**
+1. The model requires ~100GB free space
+2. Clear old HuggingFace models:
+   ```bash
+   # See what's cached
+   du -sh ~/.cache/huggingface/hub/*
+   
+   # Remove old/unused models
+   rm -rf ~/.cache/huggingface/hub/models--OLD-MODEL-NAME
+   ```
+
+### Download interrupted
+
+**Problem:** Download was interrupted partway through.
+
+**Solution:** Simply retry the generation. HuggingFace automatically resumes downloads from where they left off.
+
+To force a fresh download:
 ```bash
-# Uninstall PyPI version and install from git
-pip uninstall diffusers
-pip install git+https://github.com/huggingface/diffusers.git
-```
-
-### "MPS not available"
-
-**Problem:** Metal Performance Shaders not detected.
-
-**Causes:**
-- Not running on Apple Silicon
-- Outdated PyTorch version
-- Environment issue
-
-**Solution:**
-```bash
-# Check MPS availability
-python3 -c "import torch; print(torch.backends.mps.is_available())"
-
-# If False, update PyTorch
-pip install --upgrade torch torchvision torchaudio
+rm -rf ~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16
 ```
 
 ---
@@ -95,49 +108,46 @@ pip install --upgrade torch torchvision torchaudio
 
 ### "Generation Failed" error
 
-**Problem:** Generation starts but fails partway through.
+**Problem:** Generation starts but fails with an error.
 
 **Check the logs:**
-1. Look at `/tmp/ltx_generation.log`
-2. Or run the Python script manually to see errors
-
-**Common causes:**
-- Out of memory (try Distilled or FP8 model variant)
-- Model not fully downloaded
-- Network issue during model download
-
-**Solution:**
 ```bash
-# Clear partially downloaded model
-rm -rf ~/.cache/huggingface/hub/models--Lightricks--LTX-2*
-
-# Retry - model will redownload
+cat /tmp/ltx_generation.log
 ```
 
-**Try a lighter model:**
-1. Open Preferences > Model
-2. Select "LTX-2 Distilled (Fast)" or "LTX-2 FP8 (Low Memory)"
+**Common causes:**
+- Out of memory - reduce resolution or frames
+- Model not fully downloaded
+- Corrupted model cache
+
+**Solution:**
+1. Try a smaller resolution (512x320)
+2. Reduce frame count
+3. If model seems corrupted, delete and re-download:
+   ```bash
+   rm -rf ~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16
+   ```
 
 ### Black video output
 
 **Problem:** Video generates but appears completely black.
 
-**Cause:** Usually a precision/dtype issue with MPS.
+**Cause:** Usually a memory or precision issue.
 
-**Solution:** The app uses `float16` for MPS compatibility. If you're building from source, ensure:
-```python
-torch_dtype=torch.float16
-```
+**Solution:**
+1. Reduce resolution
+2. Reduce frame count
+3. Close other applications to free memory
 
 ### Very slow generation
 
 **Problem:** Generation takes much longer than expected.
 
 **Solutions:**
-1. Check that MPS is being used (not CPU)
+1. First generation is slower (model loading)
 2. Close other memory-intensive applications
-3. Reduce resolution or frame count
-4. Ensure you're using a supported preset
+3. Check Activity Monitor for memory pressure
+4. Reduce resolution or frame count
 
 ---
 
@@ -149,44 +159,37 @@ torch_dtype=torch.float16
 
 **Solutions:**
 
-1. **Use a lighter model variant:**
-   - In Preferences > Model, select "LTX-2 FP8 (Low Memory)"
-   - Or "LTX-2 Distilled (Fast)" for fewer steps
-   
-2. **Reduce resolution:**
+1. **Reduce resolution:**
    - Use 512×320 instead of higher resolutions
    
-3. **Reduce frame count:**
-   - Start with 49 frames instead of 121
+2. **Reduce frame count:**
+   - Start with 49 frames instead of 97+
    
-4. **Close other apps:**
+3. **Close other apps:**
    - Safari, Chrome use significant memory
-   - Other ML applications
+   - Other AI/ML applications
    
-5. **Check available memory:**
-   ```bash
-   # In Terminal
-   vm_stat | head -5
-   ```
+4. **Check memory usage:**
+   - Open Activity Monitor
+   - Look at Memory Pressure graph
+   - Should have minimal swap usage
 
-{: .note }
-LTX-2 is a 19B parameter model. For best results, 32GB+ unified memory is recommended. Macs with 16GB may struggle with the full model.
+{: .warning }
+LTX-2 is a 19B parameter model. **32GB RAM minimum** required. 64GB+ recommended for higher resolutions.
 
-### Model download stuck
+### Generation slower than expected
 
-**Problem:** Model download appears stuck or very slow.
+**Problem:** Each generation takes longer than it should.
+
+**Possible causes:**
+1. Memory pressure causing swap usage
+2. Thermal throttling on hot Mac
+3. Background processes
 
 **Solutions:**
-1. Check internet connection
-2. Try again later (HuggingFace servers may be busy)
-3. Download manually:
-   ```bash
-   huggingface-cli download Lightricks/LTX-2
-   ```
-4. Use a smaller variant first:
-   ```bash
-   huggingface-cli download Lightricks/LTX-2 --include "ltx-2-19b-dev-fp8/*"
-   ```
+1. Close other applications
+2. Ensure Mac has good ventilation
+3. Check Activity Monitor for CPU/memory hogs
 
 ---
 
@@ -200,33 +203,25 @@ LTX-2 is a 19B parameter model. For best results, 32GB+ unified memory is recomm
 1. Right-click and select "Open" for first launch
 2. Check System Settings > Privacy & Security
 3. Try moving to Applications folder
-4. Verify notarization:
-   ```bash
-   spctl -a -vv "/Applications/LTX Video Generator.app"
-   ```
 
-### Preferences not saving
+### Videos saving to wrong location
 
-**Problem:** Settings reset after restart.
+**Problem:** Videos not saving to configured directory.
 
 **Solution:**
-1. Check write permissions to preferences:
-   ```bash
-   ls -la ~/Library/Preferences/com.jamescampbell.ltxvideogenerator.plist
-   ```
-2. Reset preferences:
-   ```bash
-   defaults delete com.jamescampbell.ltxvideogenerator
-   ```
+1. Open Preferences
+2. Check the **Output Directory** setting
+3. Click **Browse** to select your preferred folder
+4. Ensure the folder exists and is writable
 
 ### Videos not appearing in History
 
 **Problem:** Generated videos don't show in History tab.
 
 **Check:**
-1. Look in the default output folder (~/Movies/LTXVideoGenerator/)
-2. Verify the video file exists
-3. Check that thumbnails are being generated
+1. Look in your configured output directory
+2. Or check the default: `~/Library/Application Support/LTXVideoGenerator/Videos/`
+3. Verify the video file exists
 
 ---
 
@@ -244,15 +239,17 @@ cat /tmp/ltx_generation.log
 ```bash
 # Test your Python setup
 python3 << 'EOF'
-import torch
-print(f"PyTorch: {torch.__version__}")
-print(f"MPS available: {torch.backends.mps.is_available()}")
+import mlx.core as mx
+print(f"MLX device: {mx.default_device()}")
 
-from diffusers import LTX2Pipeline
-print("Diffusers LTX2Pipeline: OK")
+import transformers
+print(f"Transformers: {transformers.__version__}")
 
-import imageio
-print("imageio: OK")
+from huggingface_hub import snapshot_download
+print("HuggingFace Hub: OK")
+
+import cv2
+print(f"OpenCV: {cv2.__version__}")
 
 print("\nAll checks passed!")
 EOF
@@ -264,7 +261,7 @@ If problems persist:
 1. Check existing [GitHub Issues](https://github.com/james-see/ltx-video-mac/issues)
 2. Open a new issue with:
    - macOS version
-   - Mac model (M1/M2/M3)
+   - Mac model (M1/M2/M3/M4) and RAM
    - Python version
-   - Error message or log output
+   - Error message from `/tmp/ltx_generation.log`
    - Steps to reproduce
