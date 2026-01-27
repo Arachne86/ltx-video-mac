@@ -82,7 +82,7 @@ Progress is shown in the app during download.
 
 Here's an example video generated with LTX Video Generator:
 
-[▶ Watch the demo video](https://bellwetherlabs.com/example1.mp4)
+<video src="https://bellwetherlabs.com/example1.mp4" controls width="640"></video>
 
 **Prompt used:**
 > Create a 15-second cinematic product commercial for a sleek, premium TIME MACHINE device called "ChronoShift One."
