@@ -54,6 +54,7 @@ venv/
 *.swo
 *~
 .vscode/
+.cursor/
 
 # Logs
 *.log
