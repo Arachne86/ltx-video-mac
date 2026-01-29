@@ -5,7 +5,11 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
     let prompt: String
     let negativePrompt: String
     let voiceoverText: String  // Optional voiceover narration text
+    let voiceoverSource: String  // "elevenlabs" or "mlx-audio"
+    let voiceoverVoice: String   // Voice ID for TTS
     let sourceImagePath: String?  // For image-to-video mode
+    let musicEnabled: Bool       // Whether to generate background music
+    let musicGenre: String?      // Music genre raw value
     var parameters: GenerationParameters
     let createdAt: Date
     var status: GenerationStatus
@@ -20,12 +24,21 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
         !voiceoverText.isEmpty
     }
     
+    /// True if music generation is enabled
+    var hasMusic: Bool {
+        musicEnabled && musicGenre != nil
+    }
+    
     init(
         id: UUID = UUID(),
         prompt: String,
         negativePrompt: String = "",
         voiceoverText: String = "",
+        voiceoverSource: String = "mlx-audio",
+        voiceoverVoice: String = "af_heart",
         sourceImagePath: String? = nil,
+        musicEnabled: Bool = false,
+        musicGenre: String? = nil,
         parameters: GenerationParameters = .default,
         createdAt: Date = Date(),
         status: GenerationStatus = .pending
@@ -34,7 +47,11 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
         self.prompt = prompt
         self.negativePrompt = negativePrompt
         self.voiceoverText = voiceoverText
+        self.voiceoverSource = voiceoverSource
+        self.voiceoverVoice = voiceoverVoice
         self.sourceImagePath = sourceImagePath
+        self.musicEnabled = musicEnabled
+        self.musicGenre = musicGenre
         self.parameters = parameters
         self.createdAt = createdAt
         self.status = status

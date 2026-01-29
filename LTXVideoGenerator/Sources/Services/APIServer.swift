@@ -163,6 +163,11 @@ class APIServer: ObservableObject {
             }
             
             let negativePrompt = body["negative_prompt"] as? String ?? ""
+            let voiceoverText = body["voiceover_text"] as? String ?? ""
+            let voiceoverSource = body["voiceover_source"] as? String ?? "mlx-audio"
+            let voiceoverVoice = body["voiceover_voice"] as? String ?? "af_heart"
+            let musicEnabled = body["music_enabled"] as? Bool ?? false
+            let musicGenre = body["music_genre"] as? String
             
             var params = GenerationParameters.default
             if let p = body["parameters"] as? [String: Any] {
@@ -178,6 +183,11 @@ class APIServer: ObservableObject {
             let request = GenerationRequest(
                 prompt: prompt,
                 negativePrompt: negativePrompt,
+                voiceoverText: voiceoverText,
+                voiceoverSource: voiceoverSource,
+                voiceoverVoice: voiceoverVoice,
+                musicEnabled: musicEnabled,
+                musicGenre: musicGenre,
                 parameters: params
             )
             

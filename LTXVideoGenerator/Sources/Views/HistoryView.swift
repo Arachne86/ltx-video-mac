@@ -218,6 +218,11 @@ struct HistoryView: View {
         let request = GenerationRequest(
             prompt: result.prompt,
             negativePrompt: result.negativePrompt,
+            voiceoverText: result.voiceoverText,
+            voiceoverSource: result.voiceoverSource,
+            voiceoverVoice: result.voiceoverVoice,
+            musicEnabled: result.hasMusic,
+            musicGenre: result.musicGenre,
             parameters: params
         )
         generationService.addToQueue(request)

@@ -12,11 +12,22 @@ struct PromptInputView: View {
     
     @State private var showNegativePrompt = false
     @State private var showVoiceover = false
+    @State private var showMusic = false
     @State private var showImageToVideo = false
     @State private var sourceImagePath: String?
     @State private var sourceImageThumbnail: NSImage?
     @State private var showCompletedIndicator = false
     @FocusState private var isPromptFocused: Bool
+    
+    // Audio settings
+    @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
+    @State private var voiceoverSource: AudioSource = .mlxAudio
+    @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
+    @State private var selectedMLXVoice: String = "af_heart"
+    
+    // Music settings
+    @State private var musicEnabled = false
+    @State private var selectedMusicGenre: MusicGenre = .cinematicUplifting
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -138,7 +149,63 @@ struct PromptInputView: View {
             
             // Voiceover narration toggle
             DisclosureGroup(isExpanded: $showVoiceover) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Source selection
+                    HStack {
+                        Text("Source:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Picker("", selection: $voiceoverSource) {
+                            ForEach(AudioSource.allCases) { source in
+                                Text(source.displayName).tag(source)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 280)
+                    }
+                    
+                    // ElevenLabs API key warning
+                    if voiceoverSource == .elevenLabs && elevenLabsApiKey.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                            Text("ElevenLabs API key required. Set in Preferences > Audio.")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                    
+                    // Voice selection
+                    HStack {
+                        Text("Voice:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        if voiceoverSource == .elevenLabs {
+                            Picker("", selection: $selectedElevenLabsVoice) {
+                                ForEach(ElevenLabsVoice.defaultVoices) { voice in
+                                    Text(voice.name).tag(voice.voice_id)
+                                }
+                            }
+                            .frame(maxWidth: 200)
+                        } else {
+                            Picker("", selection: $selectedMLXVoice) {
+                                ForEach(MLXAudioVoice.defaultVoices) { voice in
+                                    Text(voice.name).tag(voice.id)
+                                }
+                            }
+                            .frame(maxWidth: 200)
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // Narration text
                     TextEditor(text: $voiceoverText)
                         .font(.body)
                         .frame(height: 80)
@@ -149,7 +216,7 @@ struct PromptInputView: View {
                                 .fill(Color(nsColor: .controlBackgroundColor))
                         )
                     
-                    Text("Optional narration text for audio. You can also add audio later from the History view by right-clicking any video thumbnail.")
+                    Text("Optional narration text for audio. You can also add audio later from the History view.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -160,6 +227,66 @@ struct PromptInputView: View {
                         .foregroundStyle(.secondary)
                     
                     if !voiceoverText.isEmpty {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    }
+                }
+            }
+            
+            // Background Music toggle
+            DisclosureGroup(isExpanded: $showMusic) {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Enable toggle
+                    Toggle("Generate background music", isOn: $musicEnabled)
+                        .font(.subheadline)
+                    
+                    if musicEnabled {
+                        // ElevenLabs API key warning
+                        if elevenLabsApiKey.isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                    .font(.caption)
+                                Text("ElevenLabs API key required for music. Set in Preferences > Audio.")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding(8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(6)
+                        }
+                        
+                        // Genre selection with categories
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Genre:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            Picker("", selection: $selectedMusicGenre) {
+                                ForEach(MusicGenre.groupedByCategory, id: \.category) { group in
+                                    Section(header: Text(group.category)) {
+                                        ForEach(group.genres) { genre in
+                                            Text(genre.displayName).tag(genre)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: 300)
+                        }
+                        
+                        Text("Music will be generated using ElevenLabs Music API and mixed with your video.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } label: {
+                HStack {
+                    Label("Background Music", systemImage: "music.note")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    if musicEnabled {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                             .font(.caption)
@@ -273,7 +400,11 @@ struct PromptInputView: View {
             prompt: prompt,
             negativePrompt: negativePrompt,
             voiceoverText: voiceoverText,
+            voiceoverSource: voiceoverSource.rawValue,
+            voiceoverVoice: voiceoverSource == .elevenLabs ? selectedElevenLabsVoice : selectedMLXVoice,
             sourceImagePath: sourceImagePath,
+            musicEnabled: musicEnabled,
+            musicGenre: musicEnabled ? selectedMusicGenre.rawValue : nil,
             parameters: parameters
         )
         generationService.addToQueue(request)
@@ -284,7 +415,11 @@ struct PromptInputView: View {
             prompt: prompt,
             negativePrompt: negativePrompt,
             voiceoverText: voiceoverText,
+            voiceoverSource: voiceoverSource.rawValue,
+            voiceoverVoice: voiceoverSource == .elevenLabs ? selectedElevenLabsVoice : selectedMLXVoice,
             sourceImagePath: sourceImagePath,
+            musicEnabled: musicEnabled,
+            musicGenre: musicEnabled ? selectedMusicGenre.rawValue : nil,
             parameters: parameters
         )
         generationService.addToQueue(request)
@@ -296,7 +431,11 @@ struct PromptInputView: View {
                 prompt: prompt,
                 negativePrompt: negativePrompt,
                 voiceoverText: voiceoverText,
+                voiceoverSource: voiceoverSource.rawValue,
+                voiceoverVoice: voiceoverSource == .elevenLabs ? selectedElevenLabsVoice : selectedMLXVoice,
                 sourceImagePath: sourceImagePath,
+                musicEnabled: musicEnabled,
+                musicGenre: musicEnabled ? selectedMusicGenre.rawValue : nil,
                 parameters: GenerationParameters(
                     numInferenceSteps: parameters.numInferenceSteps,
                     guidanceScale: parameters.guidanceScale,

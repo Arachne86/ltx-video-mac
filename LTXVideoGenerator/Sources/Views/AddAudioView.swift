@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum AudioTab: String, CaseIterable, Identifiable {
+    case voiceover = "Voiceover"
+    case music = "Music"
+    case both = "Both"
+    
+    var id: String { rawValue }
+}
+
 struct AddAudioView: View {
     @EnvironmentObject var historyManager: HistoryManager
     @StateObject private var audioService = AudioService.shared
@@ -9,12 +17,21 @@ struct AddAudioView: View {
     let onDismiss: () -> Void
     
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
-    @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
+    @AppStorage("defaultAudioSource") private var defaultAudioSource = "mlx-audio"
     
-    @State private var audioSource: AudioSource = .elevenLabs
+    // Tab selection
+    @State private var selectedTab: AudioTab = .voiceover
+    
+    // Voiceover settings
+    @State private var audioSource: AudioSource = .mlxAudio
     @State private var narrationText: String = ""
     @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
     @State private var selectedMLXVoice: String = "af_heart"
+    
+    // Music settings
+    @State private var selectedMusicGenre: MusicGenre = .cinematicUplifting
+    
+    // Generation state
     @State private var isGenerating = false
     @State private var progress: Double = 0
     @State private var statusMessage = ""
@@ -36,98 +53,44 @@ struct AddAudioView: View {
             
             Divider()
             
+            // Tab Picker
+            Picker("Audio Type", selection: $selectedTab) {
+                ForEach(AudioTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.top, 12)
+            
             // Content
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    // Audio Source Picker
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Audio Source")
-                            .font(.subheadline.bold())
-                        
-                        Picker("Source", selection: $audioSource) {
-                            ForEach(AudioSource.allCases) { source in
-                                Text(source.displayName).tag(source)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        
-                        Text(audioSource.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    // Voiceover section
+                    if selectedTab == .voiceover || selectedTab == .both {
+                        VoiceoverSection(
+                            audioSource: $audioSource,
+                            narrationText: $narrationText,
+                            selectedElevenLabsVoice: $selectedElevenLabsVoice,
+                            selectedMLXVoice: $selectedMLXVoice,
+                            elevenLabsApiKey: elevenLabsApiKey,
+                            prompt: result.prompt,
+                            voiceoverText: result.voiceoverText
+                        )
                     }
                     
-                    // ElevenLabs API Key Warning
-                    if audioSource == .elevenLabs && elevenLabsApiKey.isEmpty {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("ElevenLabs API Key Required")
-                                    .font(.subheadline.bold())
-                                Text("Add your API key in Preferences > Audio to use ElevenLabs.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Button("Open Preferences") {
-                                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                                }
-                                .buttonStyle(.link)
-                                .font(.caption)
-                            }
-                        }
-                        .padding()
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
+                    // Divider between sections when showing both
+                    if selectedTab == .both {
+                        Divider()
+                            .padding(.vertical, 8)
                     }
                     
-                    // Voice Selection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Voice")
-                            .font(.subheadline.bold())
-                        
-                        if audioSource == .elevenLabs {
-                            Picker("Voice", selection: $selectedElevenLabsVoice) {
-                                ForEach(ElevenLabsVoice.defaultVoices) { voice in
-                                    Text(voice.name).tag(voice.voice_id)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        } else {
-                            Picker("Voice", selection: $selectedMLXVoice) {
-                                ForEach(MLXAudioVoice.defaultVoices) { voice in
-                                    Text(voice.name).tag(voice.id)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
-                    }
-                    
-                    // Narration Text
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Narration Text")
-                                .font(.subheadline.bold())
-                            Spacer()
-                            Button("Use Video Prompt") {
-                                narrationText = result.prompt
-                            }
-                            .font(.caption)
-                            .buttonStyle(.link)
-                        }
-                        
-                        TextEditor(text: $narrationText)
-                            .font(.body)
-                            .frame(minHeight: 120)
-                            .padding(8)
-                            .background(Color(nsColor: .textBackgroundColor))
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                            )
-                        
-                        Text("\(narrationText.count) characters")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    // Music section
+                    if selectedTab == .music || selectedTab == .both {
+                        MusicSection(
+                            selectedGenre: $selectedMusicGenre,
+                            elevenLabsApiKey: elevenLabsApiKey
+                        )
                     }
                     
                     // Error Message
@@ -160,23 +123,27 @@ struct AddAudioView: View {
             
             // Footer
             HStack {
-                if result.hasAudio {
-                    Label("This video already has audio", systemImage: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                // Info about existing audio
+                if result.hasAudio || result.hasMusic {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                        Text(existingAudioMessage)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
                 
-                Button("Generate Audio") {
+                Button(buttonTitle) {
                     generateAudio()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isGenerating || narrationText.isEmpty || (audioSource == .elevenLabs && elevenLabsApiKey.isEmpty))
+                .disabled(isGenerateDisabled)
             }
             .padding()
         }
-        .frame(width: 500, height: 550)
+        .frame(width: 550, height: 650)
         .onAppear {
             // Pre-fill with voiceover text if available, otherwise use video prompt
             if !result.voiceoverText.isEmpty {
@@ -186,8 +153,52 @@ struct AddAudioView: View {
             }
             
             // Set default source from preferences
-            audioSource = AudioSource(rawValue: defaultAudioSource) ?? .elevenLabs
+            audioSource = AudioSource(rawValue: defaultAudioSource) ?? .mlxAudio
+            
+            // If video already has voiceover but not music, default to music tab
+            if result.hasAudio && !result.hasMusic {
+                selectedTab = .music
+            }
         }
+    }
+    
+    private var existingAudioMessage: String {
+        if result.hasAudio && result.hasMusic {
+            return "Video has voiceover and music"
+        } else if result.hasAudio {
+            return "Video has voiceover"
+        } else if result.hasMusic {
+            return "Video has music"
+        }
+        return ""
+    }
+    
+    private var buttonTitle: String {
+        switch selectedTab {
+        case .voiceover:
+            return result.hasAudio ? "Replace Voiceover" : "Add Voiceover"
+        case .music:
+            return result.hasMusic ? "Replace Music" : "Add Music"
+        case .both:
+            return "Add Audio"
+        }
+    }
+    
+    private var isGenerateDisabled: Bool {
+        if isGenerating { return true }
+        
+        switch selectedTab {
+        case .voiceover:
+            if narrationText.isEmpty { return true }
+            if audioSource == .elevenLabs && elevenLabsApiKey.isEmpty { return true }
+        case .music:
+            if elevenLabsApiKey.isEmpty { return true }
+        case .both:
+            if narrationText.isEmpty { return true }
+            if elevenLabsApiKey.isEmpty { return true } // Music always needs ElevenLabs
+        }
+        
+        return false
     }
     
     private func generateAudio() {
@@ -196,21 +207,19 @@ struct AddAudioView: View {
         statusMessage = "Starting..."
         errorMessage = nil
         
-        let voiceId = audioSource == .elevenLabs ? selectedElevenLabsVoice : selectedMLXVoice
-        
         Task {
             do {
-                let updatedResult = try await audioService.addAudioToVideo(
-                    result: result,
-                    text: narrationText,
-                    source: audioSource,
-                    voiceId: voiceId,
-                    historyManager: historyManager
-                ) { pct, msg in
-                    DispatchQueue.main.async {
-                        self.progress = pct
-                        self.statusMessage = msg
-                    }
+                var updatedResult = result
+                
+                switch selectedTab {
+                case .voiceover:
+                    updatedResult = try await generateVoiceover(for: updatedResult)
+                case .music:
+                    updatedResult = try await generateMusic(for: updatedResult)
+                case .both:
+                    // Generate voiceover first, then music, then merge
+                    updatedResult = try await generateVoiceover(for: updatedResult)
+                    updatedResult = try await generateMusic(for: updatedResult)
                 }
                 
                 await MainActor.run {
@@ -228,6 +237,213 @@ struct AddAudioView: View {
                     errorMessage = error.localizedDescription
                 }
             }
+        }
+    }
+    
+    private func generateVoiceover(for inputResult: GenerationResult) async throws -> GenerationResult {
+        let voiceId = audioSource == .elevenLabs ? selectedElevenLabsVoice : selectedMLXVoice
+        
+        return try await audioService.addAudioToVideo(
+            result: inputResult,
+            text: narrationText,
+            source: audioSource,
+            voiceId: voiceId,
+            historyManager: historyManager
+        ) { pct, msg in
+            DispatchQueue.main.async {
+                self.progress = selectedTab == .both ? pct * 0.5 : pct
+                self.statusMessage = msg
+            }
+        }
+    }
+    
+    private func generateMusic(for inputResult: GenerationResult) async throws -> GenerationResult {
+        // Calculate video duration in milliseconds
+        let videoDurationMs = Int((Double(inputResult.parameters.numFrames) / Double(inputResult.parameters.fps)) * 1000)
+        
+        return try await audioService.addMusicToVideo(
+            result: inputResult,
+            genre: selectedMusicGenre,
+            durationMs: videoDurationMs,
+            historyManager: historyManager
+        ) { pct, msg in
+            DispatchQueue.main.async {
+                self.progress = selectedTab == .both ? 0.5 + pct * 0.5 : pct
+                self.statusMessage = msg
+            }
+        }
+    }
+}
+
+// MARK: - Voiceover Section
+
+struct VoiceoverSection: View {
+    @Binding var audioSource: AudioSource
+    @Binding var narrationText: String
+    @Binding var selectedElevenLabsVoice: String
+    @Binding var selectedMLXVoice: String
+    let elevenLabsApiKey: String
+    let prompt: String
+    let voiceoverText: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Voiceover")
+                .font(.headline)
+            
+            // Audio Source Picker
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Source")
+                    .font(.subheadline.bold())
+                
+                Picker("Source", selection: $audioSource) {
+                    ForEach(AudioSource.allCases) { source in
+                        Text(source.displayName).tag(source)
+                    }
+                }
+                .pickerStyle(.segmented)
+                
+                Text(audioSource.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            // ElevenLabs API Key Warning
+            if audioSource == .elevenLabs && elevenLabsApiKey.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("ElevenLabs API Key Required")
+                            .font(.subheadline.bold())
+                        Text("Add your API key in Preferences > Audio to use ElevenLabs.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
+            
+            // Voice Selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Voice")
+                    .font(.subheadline.bold())
+                
+                if audioSource == .elevenLabs {
+                    Picker("Voice", selection: $selectedElevenLabsVoice) {
+                        ForEach(ElevenLabsVoice.defaultVoices) { voice in
+                            Text(voice.name).tag(voice.voice_id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } else {
+                    Picker("Voice", selection: $selectedMLXVoice) {
+                        ForEach(MLXAudioVoice.defaultVoices) { voice in
+                            Text(voice.name).tag(voice.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            }
+            
+            // Narration Text
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Narration Text")
+                        .font(.subheadline.bold())
+                    Spacer()
+                    Button("Use Prompt") {
+                        narrationText = prompt
+                    }
+                    .font(.caption)
+                    .buttonStyle(.link)
+                }
+                
+                TextEditor(text: $narrationText)
+                    .font(.body)
+                    .frame(minHeight: 100)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                    )
+                
+                Text("\(narrationText.count) characters")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Music Section
+
+struct MusicSection: View {
+    @Binding var selectedGenre: MusicGenre
+    let elevenLabsApiKey: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Background Music")
+                .font(.headline)
+            
+            // API Key Warning
+            if elevenLabsApiKey.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("ElevenLabs API Key Required")
+                            .font(.subheadline.bold())
+                        Text("Music generation requires an ElevenLabs API key. Add your key in Preferences > Audio.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
+            
+            // Genre Selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Genre")
+                    .font(.subheadline.bold())
+                
+                Picker("Genre", selection: $selectedGenre) {
+                    ForEach(MusicGenre.groupedByCategory, id: \.category) { group in
+                        Section(header: Text(group.category)) {
+                            ForEach(group.genres) { genre in
+                                Text(genre.displayName).tag(genre)
+                            }
+                        }
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: 300)
+            }
+            
+            // Genre Description
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Preview:")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                Text(selectedGenre.prompt)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+            .padding()
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(8)
+            
+            Text("Music will be generated to match your video length using ElevenLabs Music API.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }
