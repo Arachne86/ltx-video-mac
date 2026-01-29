@@ -67,16 +67,22 @@ struct MLXAudioVoice: Identifiable {
     let id: String
     let name: String
     
+    // Kokoro model voice presets
     static let defaultVoices: [MLXAudioVoice] = [
-        MLXAudioVoice(id: "af_heart", name: "Heart (Female)"),
-        MLXAudioVoice(id: "af_bella", name: "Bella (Female)"),
-        MLXAudioVoice(id: "af_nicole", name: "Nicole (Female)"),
-        MLXAudioVoice(id: "af_sarah", name: "Sarah (Female)"),
-        MLXAudioVoice(id: "af_sky", name: "Sky (Female)"),
-        MLXAudioVoice(id: "am_adam", name: "Adam (Male)"),
-        MLXAudioVoice(id: "am_michael", name: "Michael (Male)"),
-        MLXAudioVoice(id: "bf_emma", name: "Emma (British Female)"),
-        MLXAudioVoice(id: "bm_george", name: "George (British Male)")
+        // American English Female
+        MLXAudioVoice(id: "af_heart", name: "Heart (US Female)"),
+        MLXAudioVoice(id: "af_bella", name: "Bella (US Female)"),
+        MLXAudioVoice(id: "af_nova", name: "Nova (US Female)"),
+        MLXAudioVoice(id: "af_sky", name: "Sky (US Female)"),
+        // American English Male
+        MLXAudioVoice(id: "am_adam", name: "Adam (US Male)"),
+        MLXAudioVoice(id: "am_echo", name: "Echo (US Male)"),
+        // British English Female
+        MLXAudioVoice(id: "bf_alice", name: "Alice (UK Female)"),
+        MLXAudioVoice(id: "bf_emma", name: "Emma (UK Female)"),
+        // British English Male
+        MLXAudioVoice(id: "bm_daniel", name: "Daniel (UK Male)"),
+        MLXAudioVoice(id: "bm_george", name: "George (UK Male)")
     ]
 }
 
