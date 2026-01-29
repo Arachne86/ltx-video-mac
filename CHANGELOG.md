@@ -5,6 +5,59 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-01-29
+
+### Added
+- **Background Music Generation** - Generate instrumental music using ElevenLabs Music API
+  - 54 genre presets across 9 categories (Electronic, Hip-Hop/R&B, Rock, Pop, Jazz/Blues, Classical/Cinematic, World, Country/Folk, Functional/Mood)
+  - Music automatically matches video length
+  - Ducked under voiceover when both are present (20% volume)
+- **Voiceover Source Selection** - Choose between ElevenLabs (cloud) or MLX-Audio (local) for TTS
+  - Voice picker for both engines in generation view
+  - API key validation with helpful warnings
+- **Enhanced Add Audio View** - Three-tab interface:
+  - Voiceover: Add narration to videos
+  - Music: Add background music by genre
+  - Both: Add voiceover and music together
+- Genre preview shows ElevenLabs prompt before generation
+
+### Changed
+- GenerationRequest model extended with voiceoverSource, voiceoverVoice, musicEnabled, musicGenre
+- GenerationResult model extended with voiceoverSource, voiceoverVoice, musicPath, musicGenre
+- Default audio source changed to MLX-Audio (local)
+- AddAudioView expanded from 500x550 to 550x650
+
+## [2.0.9] - 2026-01-28
+
+### Fixed
+- Audio files now save to the same directory as the video (respects custom output folder setting)
+- Previously audio was incorrectly saving to default Application Support folder
+
+## [2.0.8] - 2026-01-28
+
+### Added
+- Voiceover/Narration input field in generation view
+- voiceoverText stored with results and pre-fills audio dialog
+
+### Fixed
+- Fixed mlx-audio API to use correct Kokoro model interface
+- Fixed empty Add Audio sheet bug (race condition with sheet presentation)
+- Fixed truncated buttons in detail view (now icon-only with tooltips)
+
+## [2.0.7] - 2026-01-28
+
+### Added
+- **Audio Generation** - Add voiceover narration to videos
+  - ElevenLabs (cloud) and MLX-Audio (local) TTS options
+  - Voice selection with 9+ preset voices per engine
+  - FFmpeg integration for audio/video merging
+- **Add Audio from History** - Right-click any video thumbnail to add audio
+- ElevenLabs API key configuration in Preferences > Audio
+- Default audio source preference setting
+
+### Changed
+- History detail view buttons now icon-only with tooltips for better layout
+
 ## [2.0.0] - 2026-01-26
 
 ### Changed

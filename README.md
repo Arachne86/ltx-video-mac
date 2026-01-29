@@ -14,7 +14,9 @@ A beautiful, native macOS application for generating AI videos from text prompts
 - **Native macOS App** - Built with SwiftUI for a seamless Mac experience
 - **Apple Silicon Native** - Uses MLX framework for optimal performance on M-series chips
 - **Text-to-Video Generation** - Transform text prompts into video clips
-- **Image-to-Video** - Animate images into videos (coming soon)
+- **Image-to-Video** - Animate images into videos
+- **Voiceover Narration** - Add TTS voiceover using ElevenLabs (cloud) or MLX-Audio (local)
+- **Background Music** - Generate instrumental music with 54 genre presets via ElevenLabs Music API
 - **Auto Package Installer** - Missing Python packages are detected and can be installed with one click
 - **Generation Queue** - Queue multiple generations with real-time progress tracking
 - **History Management** - Browse, preview, and manage all your generated videos
@@ -77,6 +79,41 @@ Progress is shown in the app during download.
 - Use camera directions: "The camera slowly pans across..."
 - Specify lighting: "golden hour lighting", "dramatic shadows"
 - Include motion: "waves crashing", "leaves falling"
+
+## Audio Features
+
+### Voiceover / Narration
+
+Add text-to-speech voiceover to your videos:
+
+1. Expand **Voiceover / Narration** in the generation view
+2. Choose your source: **MLX-Audio** (local, free) or **ElevenLabs** (cloud, requires API key)
+3. Select a voice from the dropdown
+4. Enter your narration text
+5. Audio generates with your video or can be added later from History
+
+### Background Music
+
+Add AI-generated instrumental music (requires ElevenLabs API key):
+
+1. Expand **Background Music** in the generation view
+2. Toggle **Generate background music**
+3. Choose from 54 genre presets:
+   - **Electronic**: EDM, House, Techno, Ambient, Synthwave, etc.
+   - **Hip-Hop/R&B**: Trap, Lo-Fi, Boom Bap, Soul, etc.
+   - **Rock**: Classic, Alternative, Indie, Metal, etc.
+   - **Pop**: Modern, Indie, Dance, Acoustic
+   - **Jazz/Blues**: Smooth Jazz, Bebop, Lounge, Blues
+   - **Classical/Cinematic**: Orchestral, Piano, Epic, Tense, Uplifting
+   - **World**: Latin, Reggae, Afrobeat, Middle Eastern, Asian
+   - **Country/Folk**: Modern, Classic, Acoustic, Indie
+   - **Functional**: Corporate, Motivational, Relaxing, Suspense, Action, Romantic, etc.
+
+Music automatically matches your video length and is mixed at background volume (30%) or ducked further (20%) when combined with voiceover.
+
+### Adding Audio to Existing Videos
+
+Right-click any video thumbnail in **Video Archive** and select **Add Audio** to add voiceover, music, or both to previously generated videos.
 
 ## Example
 

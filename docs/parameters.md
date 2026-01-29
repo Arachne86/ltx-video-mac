@@ -225,6 +225,56 @@ Social media format
 
 ---
 
+## Audio Settings
+
+### Voiceover Source
+
+Choose between local or cloud-based text-to-speech.
+
+| Source | Quality | Speed | Requirements |
+|:-------|:--------|:------|:-------------|
+| MLX Audio (Local) | Good | Fast | None (free) |
+| ElevenLabs (Cloud) | Excellent | Fast | API key |
+
+### Voice Options
+
+**MLX Audio Voices:**
+- Heart, Bella, Nova, Sky (US Female)
+- Adam, Echo (US Male)
+- Alice, Emma (UK Female)
+- Daniel, George (UK Male)
+
+**ElevenLabs Voices:**
+- Rachel, Domi, Bella, Elli (Female)
+- Antoni, Josh, Arnold, Adam, Sam (Male)
+
+### Background Music
+
+Requires ElevenLabs API key. Music is generated to match video length automatically.
+
+| Setting | Value |
+|:--------|:------|
+| Volume (music only) | 30% |
+| Volume (with voiceover) | 20% |
+| Format | AAC 192kbps |
+
+### Music Genres
+
+54 presets across 9 categories. Each genre has a carefully crafted prompt optimized for ElevenLabs Music API.
+
+**Categories:**
+- Electronic (8 genres)
+- Hip-Hop/R&B (6 genres)
+- Rock (6 genres)
+- Pop (4 genres)
+- Jazz/Blues (5 genres)
+- Classical/Cinematic (6 genres)
+- World (5 genres)
+- Country/Folk (4 genres)
+- Functional/Mood (10 genres)
+
+---
+
 ## Performance Notes
 
 ### Memory Usage

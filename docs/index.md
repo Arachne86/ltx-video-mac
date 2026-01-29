@@ -27,6 +27,8 @@ LTX Video Generator is a beautiful, native macOS application built with SwiftUI.
 - **LTX-2 Model** - 19B parameter video generation model from Lightricks
 - **Text-to-Video** - Generate videos from text descriptions
 - **Image-to-Video** - Animate images into videos
+- **Voiceover Narration** - Add TTS audio using ElevenLabs (cloud) or MLX-Audio (local)
+- **Background Music** - 54 genre presets for AI-generated instrumental music via ElevenLabs
 - **Auto Package Installer** - Missing Python packages detected and installed with one click
 - **Generation Queue** - Queue multiple videos and track progress in real-time
 - **Smart History** - Browse, preview, and manage all your generated videos

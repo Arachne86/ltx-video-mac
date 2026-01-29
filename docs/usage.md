@@ -67,6 +67,62 @@ You can animate images into videos:
 3. Adjust **Image Strength** (1.0 = full influence, 0.0 = ignore image)
 4. The first frame will be conditioned on your image
 
+## Adding Audio
+
+### Voiceover / Narration
+
+Add text-to-speech voiceover to your videos:
+
+1. Expand the **Voiceover / Narration** section
+2. Choose your source:
+   - **MLX Audio (Local)** - Free, runs on-device, good quality
+   - **ElevenLabs (Cloud)** - High quality, requires API key
+3. Select a voice from the dropdown (10 voices for MLX, 9 for ElevenLabs)
+4. Enter your narration text
+5. Generate your video - audio will be added automatically
+
+{: .tip }
+You can also add audio later by right-clicking any video thumbnail in the **Video Archive**.
+
+### Background Music
+
+Add AI-generated instrumental music (requires ElevenLabs API key):
+
+1. Expand the **Background Music** section
+2. Toggle **Generate background music** on
+3. Choose a genre from the dropdown:
+   - Organized into 9 categories with 54 total presets
+   - Preview the prompt by hovering over the selection
+4. Music automatically matches your video length
+
+### Music Genre Categories
+
+| Category | Genres |
+|:---------|:-------|
+| Electronic | EDM, House, Techno, Ambient, Chillwave, Synthwave, D&B, Trance |
+| Hip-Hop/R&B | Trap, Lo-Fi, Boom Bap, Slow R&B, Modern R&B, Soul |
+| Rock | Classic, Alternative, Indie, Metal, Punk, Acoustic |
+| Pop | Modern, Indie, Dance, Acoustic |
+| Jazz/Blues | Smooth, Bebop, Lounge, Electric Blues, Acoustic Blues |
+| Classical/Cinematic | Orchestral, Piano, Chamber, Epic, Tense, Uplifting |
+| World | Latin, Reggae, Afrobeat, Middle Eastern, Asian |
+| Country/Folk | Modern, Classic, Acoustic Folk, Indie Folk |
+| Functional | Corporate, Motivational, Relaxing, Suspense, Action, Romantic, Happy, Sad, Dramatic, Mystery |
+
+### Audio from History
+
+Add audio to previously generated videos:
+
+1. Go to **Video Archive**
+2. Right-click any video thumbnail
+3. Select **Add Audio** (or **Replace Audio** if it already has audio)
+4. Choose from three tabs:
+   - **Voiceover** - Add narration only
+   - **Music** - Add background music only
+   - **Both** - Add voiceover and music together
+
+When combining voiceover and music, the music is automatically ducked to 20% volume so the voice remains clear.
+
 ## Writing Effective Prompts
 
 ### Include Camera Movement
