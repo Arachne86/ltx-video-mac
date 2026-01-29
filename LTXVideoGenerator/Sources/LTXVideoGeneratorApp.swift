@@ -85,12 +85,25 @@ struct RootView: View {
             }
             .alert("Python Setup", isPresented: $showPythonSetupAlert) {
                 Button("Open Preferences") {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    openSettings()
                 }
                 Button("Later", role: .cancel) {}
             } message: {
                 Text(pythonCheckMessage)
             }
+    }
+    
+    private func openSettings() {
+        // Delay slightly to let alert dismiss first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if #available(macOS 14.0, *) {
+                // macOS 14+ uses Settings
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            } else {
+                // macOS 13 and earlier uses Preferences
+                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            }
+        }
     }
 }
 
