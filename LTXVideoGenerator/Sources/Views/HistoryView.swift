@@ -8,7 +8,6 @@ struct HistoryView: View {
     @State private var selection = Set<GenerationResult>()
     @State private var searchText = ""
     @State private var sortOrder: SortOrder = .dateDescending
-    @State private var showAddAudioSheet = false
     @State private var addAudioResult: GenerationResult?
     
     enum SortOrder: String, CaseIterable {
@@ -133,7 +132,6 @@ struct HistoryView: View {
             if let selected = historyManager.selectedResult {
                 HistoryDetailView(result: selected, onAddAudio: { result in
                     addAudioResult = result
-                    showAddAudioSheet = true
                 })
                     .frame(minWidth: 350, idealWidth: 400)
             } else {
@@ -147,21 +145,17 @@ struct HistoryView: View {
                 .frame(minWidth: 350, idealWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .sheet(isPresented: $showAddAudioSheet) {
-            if let result = addAudioResult {
-                AddAudioView(
-                    result: result,
-                    onComplete: { updatedResult in
-                        historyManager.updateResult(updatedResult)
-                        showAddAudioSheet = false
-                        addAudioResult = nil
-                    },
-                    onDismiss: {
-                        showAddAudioSheet = false
-                        addAudioResult = nil
-                    }
-                )
-            }
+        .sheet(item: $addAudioResult) { result in
+            AddAudioView(
+                result: result,
+                onComplete: { updatedResult in
+                    historyManager.updateResult(updatedResult)
+                    addAudioResult = nil
+                },
+                onDismiss: {
+                    addAudioResult = nil
+                }
+            )
         }
     }
     
@@ -183,7 +177,6 @@ struct HistoryView: View {
         
         Button {
             addAudioResult = result
-            showAddAudioSheet = true
         } label: {
             Label(result.hasAudio ? "Replace Audio" : "Add Audio", systemImage: "waveform")
         }
