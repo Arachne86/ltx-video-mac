@@ -33,3 +33,7 @@ tqdm>=4.65.0
 
 # Audio generation (for adding narration/TTS to videos)
 mlx-audio>=0.2.0
+
+# Unified audio-video generation (DEFAULT model)
+# Generates video with synchronized audio in a single pass
+mlx-video-with-audio @ git+https://github.com/james-see/mlx-video-with-audio.git

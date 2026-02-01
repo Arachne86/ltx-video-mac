@@ -200,12 +200,17 @@ class GenerationService: ObservableObject {
                 )
             }
             
-            // Generate audio if requested
+            // Generate additional audio if requested
+            // Note: Unified AV model already includes synchronized audio,
+            // but users can still add voiceover or background music on top
             let audioService = AudioService.shared
+            let modelVariantRaw = UserDefaults.standard.string(forKey: "selectedModelVariant") ?? "unified_av"
+            let modelVariant = LTXModelVariant(rawValue: modelVariantRaw) ?? .unifiedAV
             
             // Generate voiceover if text is provided
             if request.hasVoiceover {
-                statusMessage = "Generating voiceover..."
+                let voiceoverNote = modelVariant.supportsBuiltInAudio ? " (layering over built-in audio)" : ""
+                statusMessage = "Generating voiceover\(voiceoverNote)..."
                 do {
                     let source = AudioSource(rawValue: request.voiceoverSource) ?? .mlxAudio
                     generationResult = try await audioService.addAudioToVideo(

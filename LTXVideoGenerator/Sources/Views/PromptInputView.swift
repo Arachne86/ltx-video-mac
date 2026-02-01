@@ -21,6 +21,7 @@ struct PromptInputView: View {
     
     // Audio settings
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
+    @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
     @State private var voiceoverSource: AudioSource = .mlxAudio
     @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
     @State private var selectedMLXVoice: String = "af_heart"
@@ -28,6 +29,11 @@ struct PromptInputView: View {
     // Music settings
     @State private var musicEnabled = false
     @State private var selectedMusicGenre: MusicGenre = .cinematicUplifting
+    
+    // Computed property for current model
+    private var currentModelVariant: LTXModelVariant {
+        LTXModelVariant(rawValue: selectedModelVariant) ?? .unifiedAV
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -145,6 +151,26 @@ struct PromptInputView: View {
                 Label("Negative Prompt", systemImage: "minus.circle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+            
+            // Audio included banner for unified model
+            if currentModelVariant.supportsBuiltInAudio {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "waveform.badge.checkmark")
+                        .foregroundStyle(.green)
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Audio Included")
+                            .font(.caption.bold())
+                        Text("Your selected model generates synchronized audio automatically. You can still add voiceover or music on top if desired.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(8)
             }
             
             // Voiceover narration toggle

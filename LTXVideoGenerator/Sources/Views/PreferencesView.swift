@@ -1,42 +1,59 @@
 import SwiftUI
 
 enum LTXModelVariant: String, CaseIterable, Identifiable {
-    case distilled = "distilled"
+    case unifiedAV = "unified_av"    // DEFAULT - generates video with synchronized audio
+    case distilled = "distilled"      // Legacy - video only
     
     var id: String { rawValue }
     
     var displayName: String {
         switch self {
-        case .distilled: return "LTX-2 Distilled"
+        case .unifiedAV: return "LTX-2 Unified (Audio+Video)"
+        case .distilled: return "LTX-2 Distilled (Video Only)"
         }
     }
     
     var description: String {
         switch self {
-        case .distilled: return "2-stage generation, optimized for Apple Silicon (~90GB download)"
+        case .unifiedAV: return "Generates video with synchronized audio (~42GB download)"
+        case .distilled: return "Video only, requires separate audio generation (~90GB download)"
         }
     }
     
     var modelRepo: String {
         switch self {
+        case .unifiedAV: return "notapalindrome/ltx2-mlx-av"
         case .distilled: return "mlx-community/LTX-2-distilled-bf16"
         }
     }
     
     var recommendedSteps: Int {
         switch self {
+        case .unifiedAV: return 8
         case .distilled: return 8
         }
     }
     
     var recommendedGuidance: Double {
         switch self {
+        case .unifiedAV: return 1.0
         case .distilled: return 1.0  // CFG=1 for distilled
         }
     }
     
     var isDistilled: Bool {
-        return true
+        return true  // Both use distilled architecture
+    }
+    
+    var supportsBuiltInAudio: Bool {
+        self == .unifiedAV
+    }
+    
+    var downloadSize: String {
+        switch self {
+        case .unifiedAV: return "~42GB"
+        case .distilled: return "~90GB"
+        }
     }
 }
 
@@ -45,7 +62,7 @@ struct PreferencesView: View {
     @AppStorage("outputDirectory") private var outputDirectory = ""
     @AppStorage("autoLoadModel") private var autoLoadModel = false
     @AppStorage("keepCompletedInQueue") private var keepCompletedInQueue = false
-    @AppStorage("selectedModelVariant") private var selectedModelVariant = "distilled"
+    @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
     
@@ -227,19 +244,21 @@ struct PreferencesView: View {
                             .foregroundStyle(.secondary)
                     }
                     
-                    // Info about distilled-only support
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(.blue)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Currently, only the distilled variant is supported.")
-                                .font(.caption)
-                            Text("Full LTX-2 feature support is coming in future updates.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    // Audio support indicator
+                    if let variant = LTXModelVariant(rawValue: selectedModelVariant), variant.supportsBuiltInAudio {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "waveform.badge.checkmark")
+                                .foregroundStyle(.green)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Audio Generation Included")
+                                    .font(.caption.bold())
+                                Text("This model generates synchronized audio with video automatically.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
                     
                     Toggle("Auto-load model on startup", isOn: $autoLoadModel)
                     
@@ -250,9 +269,15 @@ struct PreferencesView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Model Download")
                                 .font(.caption.bold())
-                            Text("LTX-2 model (~90GB) will download automatically on first generation. Models are cached in ~/.cache/huggingface/")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if let variant = LTXModelVariant(rawValue: selectedModelVariant) {
+                                Text("Model (\(variant.downloadSize)) will download automatically on first generation. Models are cached in ~/.cache/huggingface/")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Model will download automatically on first generation. Models are cached in ~/.cache/huggingface/")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .padding(.vertical, 4)

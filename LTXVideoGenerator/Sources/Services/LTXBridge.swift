@@ -125,14 +125,16 @@ class LTXBridge {
         let seed = params.seed ?? Int.random(in: 0..<Int(Int32.max))
         
         // Get selected model variant from preferences
-        let modelVariantRaw = UserDefaults.standard.string(forKey: "selectedModelVariant") ?? "distilled"
-        let modelVariant = LTXModelVariant(rawValue: modelVariantRaw) ?? .distilled
+        let modelVariantRaw = UserDefaults.standard.string(forKey: "selectedModelVariant") ?? "unified_av"
+        let modelVariant = LTXModelVariant(rawValue: modelVariantRaw) ?? .unifiedAV
         let modelRepo = modelVariant.modelRepo
         let isDistilled = modelVariant.isDistilled
+        let isUnifiedAV = modelVariant.supportsBuiltInAudio
         
         let isImageToVideo = request.isImageToVideo
         let modeDescription = isImageToVideo ? "image-to-video" : "text-to-video"
-        progressHandler(0.1, "Starting \(modeDescription) with \(modelVariant.displayName)...")
+        let audioDescription = isUnifiedAV ? " with audio" : ""
+        progressHandler(0.1, "Starting \(modeDescription)\(audioDescription) with \(modelVariant.displayName)...")
         
         // Escape the prompt for Python
         let escapedPrompt = request.prompt
@@ -152,9 +154,11 @@ class LTXBridge {
         let genWidth = (params.width / 64) * 64
         let genHeight = (params.height / 64) * 64
         
-        // Get the bundled ltx_generator.py script path
+        // Get the bundled generator script path based on model variant
         let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
-        let generatorScript = resourcesPath + "/ltx_generator.py"
+        let generatorScript = isUnifiedAV
+            ? resourcesPath + "/av_generator.py"
+            : resourcesPath + "/ltx_generator.py"
         
         // Build arguments for the generator script
         var scriptArgs = [
@@ -175,7 +179,77 @@ class LTXBridge {
             scriptArgs.append(contentsOf: ["--image", imagePath])
         }
         
-        let script = """
+        // Generate different scripts based on model variant
+        let script: String
+        if isUnifiedAV {
+            // Unified Audio-Video model - uses mlx-video-with-audio package
+            script = """
+import os
+import sys
+import json
+
+# Set up file logging
+log_file = open("\(logFile)", "w")
+def log(msg):
+    print(msg, file=log_file, flush=True)
+    print(msg, file=sys.stderr, flush=True)
+
+try:
+    log("=== LTX-2 Unified AV Generation Started ===")
+    log(f"Python: {sys.executable}")
+    
+    # Check MLX
+    import mlx.core as mx
+    log(f"MLX device: Apple Silicon")
+    
+    # Import unified audio-video generation module
+    from mlx_video.generate_av import generate_av
+    
+    model_repo = "\(modelRepo)"
+    log(f"Model: {model_repo}")
+    
+    # Image-to-video mode
+    source_image_path = "\(escapedImagePath)" if "\(escapedImagePath)" else None
+    mode = "image-to-video" if source_image_path else "text-to-video"
+    log(f"Mode: {mode} (with audio)")
+    
+    prompt = "\(escapedPrompt)"
+    log(f"Prompt: {prompt[:100]}...")
+    log(f"Size: \(genWidth)x\(genHeight), \(params.numFrames) frames")
+    log(f"Seed: \(seed)")
+    
+    # Build generation kwargs for unified AV model
+    gen_kwargs = {
+        "model_repo": model_repo,
+        "prompt": prompt,
+        "height": \(genHeight),
+        "width": \(genWidth),
+        "num_frames": \(params.numFrames),
+        "output": "\(outputPath)",
+    }
+    
+    # Add image conditioning if provided
+    if source_image_path:
+        gen_kwargs["image"] = source_image_path
+        log(f"Image conditioning: {source_image_path}")
+    
+    log("Starting generation with synchronized audio...")
+    generate_av(**gen_kwargs)
+    
+    log(f"Video with audio saved to: \(outputPath)")
+    log("Generation complete!")
+    log_file.close()
+    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode, "has_audio": True}))
+except Exception as e:
+    log(f"ERROR: {e}")
+    import traceback
+    log(traceback.format_exc())
+    log_file.close()
+    sys.exit(1)
+"""
+        } else {
+            // Legacy distilled model - uses bundled ltx_mlx module
+            script = """
 import os
 import sys
 import json
@@ -240,7 +314,7 @@ try:
     log(f"Video saved to: \(outputPath)")
     log("Generation complete!")
     log_file.close()
-    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode}))
+    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode, "has_audio": False}))
 except Exception as e:
     log(f"ERROR: {e}")
     import traceback
@@ -248,6 +322,7 @@ except Exception as e:
     log_file.close()
     sys.exit(1)
 """
+        }
         
         progressHandler(0.05, "Running MLX generation...")
         
