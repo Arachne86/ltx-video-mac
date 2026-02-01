@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/james-see/ltx-video-mac)](https://github.com/james-see/ltx-video-mac/releases)
 
-A beautiful, native macOS application for generating AI videos from text prompts using the LTX-2 model, running natively on Apple Silicon with MLX.
+A beautiful, native macOS application for generating AI videos with synchronized audio from text prompts using the LTX-2 model, running natively on Apple Silicon with MLX.
 
 ![screenshot](https://i.imgur.com/LfBhmJa.png)
 
@@ -15,6 +15,7 @@ A beautiful, native macOS application for generating AI videos from text prompts
 - **Apple Silicon Native** - Uses MLX framework for optimal performance on M-series chips
 - **Text-to-Video Generation** - Transform text prompts into video clips
 - **Image-to-Video** - Animate images into videos
+- **Built-in Audio Generation** - Default unified model generates synchronized audio with video automatically
 - **Voiceover Narration** - Add TTS voiceover using ElevenLabs (cloud) or MLX-Audio (local)
 - **Background Music** - Generate instrumental music with 54 genre presets via ElevenLabs Music API
 - **Auto Package Installer** - Missing Python packages are detected and can be installed with one click
@@ -29,7 +30,7 @@ A beautiful, native macOS application for generating AI videos from text prompts
 - **Apple Silicon** Mac (M1, M2, M3, M4 series)
 - **32GB RAM** minimum (64GB+ recommended for higher resolutions)
 - **Python 3.10+** installed (via Homebrew, pyenv, or system)
-- **~100GB disk space** for model weights
+- **~42GB disk space** for model weights (unified audio-video model)
 
 ## Installation
 
@@ -59,11 +60,13 @@ pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-py
 
 ### 4. First Generation - Model Download
 
-**Important:** On first generation, the app will download the LTX-2 model (~90GB) from Hugging Face. This is a one-time download that may take 30-60 minutes depending on your internet connection.
+**Important:** On first generation, the app will download the unified LTX-2 model (~42GB) from Hugging Face. This is a one-time download that may take 15-30 minutes depending on your internet connection.
 
 The model is cached in `~/.cache/huggingface/` and will not be re-downloaded on subsequent runs.
 
 Progress is shown in the app during download.
+
+**Note:** The default unified model (`notapalindrome/ltx2-mlx-av`) generates video with synchronized audio automatically. A legacy video-only model (~90GB) is also available in Preferences.
 
 ## Usage
 
@@ -81,6 +84,12 @@ Progress is shown in the app during download.
 - Include motion: "waves crashing", "leaves falling"
 
 ## Audio Features
+
+### Built-in Audio (Default)
+
+The default unified model (`notapalindrome/ltx2-mlx-av`) generates synchronized audio alongside video automatically. No additional configuration needed - just generate and your video will have audio!
+
+You can still layer additional voiceover or background music on top of the built-in audio if desired.
 
 ### Voiceover / Narration
 
@@ -147,7 +156,8 @@ open LTXVideoGenerator/LTXVideoGenerator.xcodeproj
 - **Frontend**: SwiftUI
 - **Python Bridge**: Subprocess execution with progress streaming
 - **ML Framework**: [MLX](https://github.com/ml-explore/mlx) (Apple's machine learning framework)
-- **Video Model**: [LTX-2 Distilled](https://huggingface.co/mlx-community/LTX-2-distilled-bf16) (19B parameters, 2-stage generation)
+- **Default Model**: [LTX-2 Unified Audio-Video](https://huggingface.co/notapalindrome/ltx2-mlx-av) (~42GB, generates video with synchronized audio)
+- **Legacy Model**: [LTX-2 Distilled](https://huggingface.co/mlx-community/LTX-2-distilled-bf16) (~90GB, video only)
 - **Precision**: bfloat16
 
 ### Architecture
@@ -159,7 +169,7 @@ Generation uses a 2-stage pipeline:
 ## Troubleshooting
 
 ### "Model download stuck"
-The download progress updates every 1%. For a 90GB download, each percent is ~900MB. Be patient.
+The download progress updates every 1%. For the 42GB unified model, each percent is ~420MB. Be patient.
 
 ### "Out of memory"
 - Reduce resolution (512x320 is fastest)

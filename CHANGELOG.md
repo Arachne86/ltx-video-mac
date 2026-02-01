@@ -5,6 +5,28 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-31
+
+### Added
+- **Unified Audio-Video Model** - New default model generates synchronized audio with video automatically
+  - Uses `notapalindrome/ltx2-mlx-av` from Hugging Face
+  - Smaller download size (~42GB vs ~90GB for legacy model)
+  - No additional configuration needed for audio
+- **Audio Included Banner** - Shows in prompt view when unified model is selected
+- **Model Audio Indicator** - Preferences shows which models support built-in audio
+- New `av_generator.py` wrapper script for unified model
+- `mlx-video-with-audio` package dependency
+
+### Changed
+- Default model changed from `mlx-community/LTX-2-distilled-bf16` to `notapalindrome/ltx2-mlx-av`
+- Model picker now shows audio capability and download size for each variant
+- Status messages indicate when generating "with audio"
+- Users can still layer voiceover/music on top of built-in audio
+
+### Technical
+- LTXBridge routes to correct generator based on model variant
+- GenerationService detects unified model and adjusts audio workflow
+
 ## [2.1.3] - 2026-01-29
 
 ### Added
