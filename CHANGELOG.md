@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - No additional configuration needed for audio
 - **Audio Included Banner** - Shows in prompt view when unified model is selected
 - **Model Audio Indicator** - Preferences shows which models support built-in audio
-- New `av_generator.py` wrapper script for unified model
-- `mlx-video-with-audio` package dependency
+- **Real-time Progress** - Stage-by-stage denoising progress display (requires mlx-video-with-audio 0.1.3+)
+- `mlx-video-with-audio` package dependency (available on [PyPI](https://pypi.org/project/mlx-video-with-audio/))
 
 ### Changed
 - Default model changed from `mlx-community/LTX-2-distilled-bf16` to `notapalindrome/ltx2-mlx-av`
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical
 - LTXBridge routes to correct generator based on model variant
 - GenerationService detects unified model and adjusts audio workflow
+- Progress parsing supports STAGE:X:STEP:Y:Z format from mlx-video-with-audio
 
 ## [2.1.3] - 2026-01-29
 

@@ -50,13 +50,15 @@ Download the latest release from the [Releases page](https://github.com/james-se
 If packages are missing, the app will show an "Install Missing Packages" button. Click it to automatically install:
 
 ```
-mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
+mlx mlx-vlm mlx-video-with-audio transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
 
 Or install manually:
 ```bash
-pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
+pip install mlx mlx-vlm mlx-video-with-audio transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
+
+The `mlx-video-with-audio` package is available on [PyPI](https://pypi.org/project/mlx-video-with-audio/) and provides the unified audio-video generation.
 
 ### 4. First Generation - Model Download
 
@@ -189,6 +191,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - [Lightricks](https://www.lightricks.com/) for the LTX-2 model
+- [mlx-video-with-audio](https://pypi.org/project/mlx-video-with-audio/) for unified audio-video generation
 - [MLX Community](https://huggingface.co/mlx-community) for the MLX-converted weights
-- [Blaizzy/mlx-video](https://github.com/Blaizzy/mlx-video) for the MLX video generation code
+- [Blaizzy/mlx-video](https://github.com/Blaizzy/mlx-video) for the original MLX video generation code
 - [Hugging Face](https://huggingface.co/) for model hosting
