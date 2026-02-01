@@ -235,20 +235,22 @@ class PythonEnvironment {
         var hasMLX = false
         
         // Required packages for bundled ltx_mlx and audio generation
-        let requiredPackages = [
-            ("mlx.core", "mlx"),
-            ("mlx_vlm", "mlx-vlm"),
-            ("transformers", "transformers"),
-            ("safetensors", "safetensors"),
-            ("huggingface_hub", "huggingface_hub"),
-            ("numpy", "numpy"),
-            ("PIL", "Pillow"),
-            ("cv2", "opencv-python"),
-            ("tqdm", "tqdm"),
-            ("mlx_audio", "mlx-audio")  // For TTS audio generation
+        // Format: (importName, pipName, isGitPackage)
+        let requiredPackages: [(String, String, Bool)] = [
+            ("mlx.core", "mlx", false),
+            ("mlx_vlm", "mlx-vlm", false),
+            ("transformers", "transformers", false),
+            ("safetensors", "safetensors", false),
+            ("huggingface_hub", "huggingface_hub", false),
+            ("numpy", "numpy", false),
+            ("PIL", "Pillow", false),
+            ("cv2", "opencv-python", false),
+            ("tqdm", "tqdm", false),
+            ("mlx_audio", "mlx-audio", false),  // For TTS audio generation
+            ("mlx_video", "git+https://github.com/james-see/mlx-video-with-audio.git", true)  // For unified AV model
         ]
         
-        for (importName, pipName) in requiredPackages {
+        for (importName, pipName, _) in requiredPackages {
             let check = "import \(importName); print('OK')"
             let result = runPythonSync(executable: executablePath, script: check)
             if result == nil || !result!.contains("OK") {
