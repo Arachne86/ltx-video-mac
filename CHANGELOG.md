@@ -5,6 +5,35 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-02-12
+
+### Fixed
+- Unified AV model generation failing due to unsupported `--repetition-penalty` and `--top-p` CLI args
+- Gemma prompt enhancement params now correctly map to the package's `--enhance-prompt` and `--temperature` flags
+
+## [2.3.0] - 2026-02-12
+
+### Added
+- **Gemma Prompt Enhancement Controls** - Collapsible section in prompt view with sliders for:
+  - Repetition Penalty (1.0–2.0) — reduces repeated phrases in enhanced prompts
+  - Top-P (0.0–1.0) — controls focus/creativity of prompt rewriting
+- **Image Strength Slider** - Control how strongly the source image influences generation (0.0–1.0) in image-to-video mode
+- **Audio Disable Toggle** - Skip audio generation on the unified AV model for faster silent video output
+- **VAE Tiling Mode Picker** - Dropdown in parameters panel with 7 modes: Auto, None, Default, Aggressive, Conservative, Spatial Only, Temporal Only
+  - Controls memory vs speed tradeoff during VAE decoding
+- Prompt enhancement pipeline in bundled `ltx_mlx` using Gemma model with system prompts
+
+### Changed
+- Default inference steps changed from 40 to 30
+- Default guidance scale changed from 4.0 to 3.0
+- All built-in presets updated to new defaults (Quick Preview: 15 steps, High Quality: 40 steps)
+
+### Technical
+- `GenerationParameters` extended with `vaeTilingMode` and `imageStrength`
+- `GenerationRequest` extended with `disableAudio`, `gemmaRepetitionPenalty`, `gemmaTopP`
+- LTXBridge passes new params as CLI args to both unified AV and distilled paths
+- Python entry points (`av_generator.py`, `ltx_generator.py`, `generate.py`) accept new arguments
+
 ## [2.2.0] - 2026-01-31
 
 ### Added
