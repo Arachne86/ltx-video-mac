@@ -22,6 +22,7 @@ struct PromptInputView: View {
     // Audio settings
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
+    @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
     @State private var voiceoverSource: AudioSource = .mlxAudio
     @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
     @State private var selectedMLXVoice: String = "af_heart"
@@ -70,6 +71,11 @@ struct PromptInputView: View {
             // Gemma Prompt Enhancement
             DisclosureGroup(isExpanded: $showPromptEnhancement) {
                 VStack(alignment: .leading, spacing: 12) {
+                    if !enableGemmaPromptEnhancement {
+                        Text("Turn on in Settings to use Gemma prompt rewriting.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     ParameterSlider(
                         title: "Repetition Penalty",
                         value: $gemmaRepetitionPenalty,
@@ -78,6 +84,7 @@ struct PromptInputView: View {
                         icon: "arrow.triangle.2.circlepath",
                         format: "%.2f"
                     )
+                    .disabled(!enableGemmaPromptEnhancement)
                     
                     ParameterSlider(
                         title: "Top-P",
@@ -87,12 +94,16 @@ struct PromptInputView: View {
                         icon: "chart.bar.fill",
                         format: "%.2f"
                     )
+                    .disabled(!enableGemmaPromptEnhancement)
                     
-                    Text("Controls Gemma prompt rewriting. Higher repetition penalty reduces repeated phrases. Lower top-p makes output more focused.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if enableGemmaPromptEnhancement {
+                        Text("Controls Gemma prompt rewriting. Higher repetition penalty reduces repeated phrases. Lower top-p makes output more focused.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.top, 8)
+                .opacity(enableGemmaPromptEnhancement ? 1 : 0.6)
             } label: {
                 Label("Prompt Enhancement (Gemma)", systemImage: "sparkles")
                     .font(.subheadline)

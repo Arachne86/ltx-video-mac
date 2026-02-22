@@ -65,6 +65,7 @@ struct PreferencesView: View {
     @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
+    @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
     
     @State private var pythonStatus: (success: Bool, message: String)?
     @State private var pythonDetails: PythonDetails?
@@ -311,6 +312,13 @@ struct PreferencesView: View {
             Form {
                 Section("Queue") {
                     Toggle("Keep completed items in queue", isOn: $keepCompletedInQueue)
+                }
+                
+                Section("Prompt Enhancement") {
+                    Toggle("Enable Gemma Prompt Enhancement", isOn: $enableGemmaPromptEnhancement)
+                    Text("Uses Gemma to rewrite prompts with vivid details for better video generation. Requires the mlx-video-with-audio package.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Section("Defaults") {

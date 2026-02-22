@@ -248,6 +248,7 @@ def generate_video(
     tiling: str = "auto",
     repetition_penalty: float = 1.2,
     top_p: float = 0.9,
+    enable_prompt_enhancement: bool = False,
 ):
     """Generate video from text prompt."""
     start_time = time.time()
@@ -291,8 +292,8 @@ def generate_video(
     text_encoder.load(model_path=model_path, text_encoder_path=text_encoder_path)
     mx.eval(text_encoder.parameters())
 
-    # Enhance prompt with Gemma if non-default params are provided
-    if repetition_penalty != 1.2 or top_p != 0.9:
+    # Enhance prompt with Gemma when enabled in Settings
+    if enable_prompt_enhancement:
         from pathlib import Path as _Path
 
         prompts_dir = _Path(__file__).parent / "models" / "ltx" / "prompts"

@@ -189,6 +189,7 @@ class LTXBridge {
         
         // Generate different scripts based on model variant
         let script: String
+        let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
         if isUnifiedAV {
             // Unified Audio-Video model - uses mlx-video-with-audio package
             // Run as module: python -m mlx_video.generate_av (CLI entry point)
@@ -241,14 +242,28 @@ try:
         "--tiling", "\(params.vaeTilingMode)",
     ]
     
-    # Map Gemma enhancement params to mlx_video's --enhance-prompt flag
-    # Enable enhancement when user changed params from defaults
-    gemma_rp = \(request.gemmaRepetitionPenalty)
-    gemma_tp = \(request.gemmaTopP)
-    if gemma_rp != 1.2 or gemma_tp != 0.9:
+    # Add --enhance-prompt only when enabled in Settings
+    enable_enhancement = \(enableGemmaPromptEnhancement ? "True" : "False")
+    if enable_enhancement:
         cmd.append("--enhance-prompt")
-        # Map top_p to temperature (lower top_p = more focused = lower temp)
-        cmd.extend(["--temperature", str(gemma_tp)])
+        cmd.extend(["--temperature", str(\(request.gemmaTopP))])
+        # Pre-flight: copy bundled prompts into mlx_video if missing (pip package omits them)
+        try:
+            from pathlib import Path
+            import shutil
+            resources_path = Path("\(resourcesPath)")
+            bundled_prompts = resources_path / "ltx_mlx" / "models" / "ltx" / "prompts"
+            import mlx_video.models.ltx.text_encoder as te
+            target_dir = Path(te.__file__).parent / "prompts"
+            for name in ["gemma_t2v_system_prompt.txt", "gemma_i2v_system_prompt.txt"]:
+                src = bundled_prompts / name
+                dst = target_dir / name
+                if src.exists() and not dst.exists():
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+                    log(f"Injected missing prompt: {name}")
+        except Exception as inj_err:
+            log(f"Warning: could not inject prompts: {inj_err}")
     
     # Add image conditioning if provided
     if source_image_path:
@@ -351,6 +366,7 @@ try:
         "tiling": "\(params.vaeTilingMode)",
         "repetition_penalty": \(request.gemmaRepetitionPenalty),
         "top_p": \(request.gemmaTopP),
+        "enable_prompt_enhancement": \(enableGemmaPromptEnhancement ? "True" : "False"),
     }
     
     # Add image conditioning if provided

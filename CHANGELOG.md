@@ -5,6 +5,19 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2026-02-22
+
+### Added
+- **Gemma Prompt Enhancement Toggle** - New setting in Preferences > Generation to enable/disable prompt rewriting. When off (default), the Gemma section is grayed out with "Turn on in Settings" note. Fixes FileNotFoundError when mlx-video-with-audio package omits system prompt files.
+
+### Changed
+- Gemma prompt enhancement now gated by Settings toggle instead of slider values
+- Pre-flight injection: when enhancement is enabled, bundled system prompts are copied into mlx_video package if missing
+- Upgraded bundled system prompts to upstream versions (LTX-2 best practices: visuals, audio, camera, style)
+
+### Fixed
+- Second video generation failing with FileNotFoundError for gemma_t2v_system_prompt.txt when prompt enhancement was used
+
 ## [2.3.2] - 2026-02-12
 
 ### Added
