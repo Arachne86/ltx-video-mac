@@ -28,6 +28,7 @@
 		AA000025 /* APIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000026; };
 		AA000027 /* ltx_mlx in Resources */ = {isa = PBXBuildFile; fileRef = AA000028; };
 		AA000029 /* audio_generator.py in Resources */ = {isa = PBXBuildFile; fileRef = AA00002A; };
+		AA000031 /* enhance_prompt_preview.py in Resources */ = {isa = PBXBuildFile; fileRef = AA000032; };
 		AA00002B /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00002C; };
 		AA00002D /* AddAudioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00002E; };
 /* End PBXBuildFile section */
@@ -53,6 +54,7 @@
 		AA000026 /* APIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIServer.swift; sourceTree = "<group>"; };
 		AA000028 /* ltx_mlx */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ltx_mlx; sourceTree = "<group>"; };
 		AA00002A /* audio_generator.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = audio_generator.py; sourceTree = "<group>"; };
+		AA000032 /* enhance_prompt_preview.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = enhance_prompt_preview.py; sourceTree = "<group>"; };
 		AA00002C /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		AA00002E /* AddAudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddAudioView.swift; sourceTree = "<group>"; };
 		AA000030 /* LTXVideoGenerator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LTXVideoGenerator.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +99,7 @@
 			children = (
 				AA000020 /* ltx_generator.py */,
 				AA00002A /* audio_generator.py */,
+				AA000032 /* enhance_prompt_preview.py */,
 				AA000028 /* ltx_mlx */,
 			);
 			path = Resources;
@@ -214,6 +217,7 @@
 				AA000023 /* Assets.xcassets in Resources */,
 				AA00001F /* ltx_generator.py in Resources */,
 				AA000029 /* audio_generator.py in Resources */,
+				AA000031 /* enhance_prompt_preview.py in Resources */,
 				AA000027 /* ltx_mlx in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

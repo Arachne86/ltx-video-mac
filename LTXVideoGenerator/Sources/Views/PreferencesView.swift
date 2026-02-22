@@ -316,6 +316,7 @@ struct PreferencesView: View {
                 
                 Section("Prompt Enhancement") {
                     Toggle("Enable Gemma Prompt Enhancement", isOn: $enableGemmaPromptEnhancement)
+                        .help("When on, Gemma rewrites your prompt with vivid details (lighting, camera, audio) before generation. Use Preview in the prompt view to see the enhanced prompt first.")
                     Text("Uses Gemma to rewrite prompts with vivid details for better video generation. Requires the mlx-video-with-audio package.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

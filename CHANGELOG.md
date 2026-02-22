@@ -5,6 +5,15 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4] - 2026-02-22
+
+### Added
+- **Enhanced Prompt Preview** - Preview the Gemma-rewritten prompt before generating. Button appears in the Gemma section when enhancement is enabled (unified AV model only). First run may take 30–60s while the model loads.
+
+### Changed
+- README: Added Gemma Prompt Enhancement section with usage steps
+- Settings > Generation: Tooltip on Enable Gemma Prompt Enhancement toggle
+
 ## [2.3.3] - 2026-02-22
 
 ### Added

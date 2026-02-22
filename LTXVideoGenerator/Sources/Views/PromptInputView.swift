@@ -38,6 +38,11 @@ struct PromptInputView: View {
     @State private var showPromptEnhancement = false
     @State private var gemmaRepetitionPenalty: Double = 1.2
     @State private var gemmaTopP: Double = 0.9
+    @State private var showEnhancedPreview = false
+    @State private var enhancedPreview: String?
+    @State private var isPreviewing = false
+    @State private var previewError: String?
+    @State private var previewStatusMessage = ""
     
     // Computed property for current model
     private var currentModelVariant: LTXModelVariant {
@@ -100,6 +105,25 @@ struct PromptInputView: View {
                         Text("Controls Gemma prompt rewriting. Higher repetition penalty reduces repeated phrases. Lower top-p makes output more focused.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        if currentModelVariant.supportsBuiltInAudio {
+                            Button {
+                                Task { await runPreview() }
+                            } label: {
+                                if isPreviewing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("Enhancing...")
+                                } else {
+                                    Label("Preview enhanced prompt", systemImage: "eye")
+                                }
+                            }
+                            .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty || isPreviewing)
+                            if isPreviewing, !previewStatusMessage.isEmpty {
+                                Text(previewStatusMessage)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
                 .padding(.top, 8)
@@ -504,6 +528,44 @@ struct PromptInputView: View {
             }
         }
         .padding()
+        .sheet(isPresented: $showEnhancedPreview) {
+            EnhancedPreviewSheet(
+                enhancedPrompt: enhancedPreview ?? "",
+                error: previewError,
+                onDismiss: {
+                    showEnhancedPreview = false
+                    enhancedPreview = nil
+                    previewError = nil
+                }
+            )
+        }
+    }
+
+    private func runPreview() async {
+        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        isPreviewing = true
+        previewError = nil
+        enhancedPreview = nil
+        do {
+            let enhanced = try await LTXBridge.shared.previewEnhancedPrompt(
+                prompt: prompt,
+                modelRepo: currentModelVariant.modelRepo,
+                temperature: gemmaTopP,
+                sourceImagePath: sourceImagePath
+            ) { status in
+                DispatchQueue.main.async { previewStatusMessage = status }
+            }
+            await MainActor.run {
+                enhancedPreview = enhanced
+                showEnhancedPreview = true
+            }
+        } catch {
+            await MainActor.run {
+                previewError = error.localizedDescription
+                showEnhancedPreview = true
+            }
+        }
+        await MainActor.run { isPreviewing = false }
     }
     
     private func generateVideo() {
@@ -620,6 +682,44 @@ struct PromptInputView: View {
     private func clearSourceImage() {
         sourceImagePath = nil
         sourceImageThumbnail = nil
+    }
+}
+
+private struct EnhancedPreviewSheet: View {
+    let enhancedPrompt: String
+    let error: String?
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Enhanced Prompt Preview", systemImage: "sparkles")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { onDismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            if let err = error {
+                Text(err)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            }
+            if !enhancedPrompt.isEmpty {
+                ScrollView {
+                    Text(enhancedPrompt)
+                        .font(.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .padding(8)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            Spacer()
+        }
+        .padding(24)
+        .frame(minWidth: 400, minHeight: 300)
     }
 }
 

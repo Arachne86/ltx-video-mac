@@ -78,6 +78,16 @@ Progress is shown in the app during download.
 4. Watch progress in the Queue sidebar
 5. Find completed videos in your configured output directory (default: Application Support)
 
+### Gemma Prompt Enhancement
+
+When enabled in **Settings > Generation**, Gemma rewrites your prompt before generation—expanding short descriptions into detailed, LTX-2–optimized prompts with visuals, audio, camera movement, and style. Use the **Preview enhanced prompt** button to see the rewritten prompt before generating.
+
+1. Go to **Settings > Generation**
+2. Turn on **Enable Gemma Prompt Enhancement**
+3. In the prompt view, expand **Prompt Enhancement (Gemma)** and adjust sliders (Repetition Penalty, Top-P) if desired
+4. Click **Preview enhanced prompt** to see the enhanced version before generating
+5. Generate as usual—the enhanced prompt is used automatically
+
 ### Tips for Better Results
 
 - Be descriptive: "A river flowing through a misty forest at dawn" works better than "river forest"

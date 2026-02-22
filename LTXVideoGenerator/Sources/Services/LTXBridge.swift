@@ -516,7 +516,89 @@ except Exception as e:
     func unloadModel() async {
         isModelLoaded = false
     }
-    
+
+    /// Preview enhanced prompt without running generation. Returns enhanced text or nil on error.
+    func previewEnhancedPrompt(
+        prompt: String,
+        modelRepo: String,
+        temperature: Double,
+        sourceImagePath: String?,
+        progressHandler: @escaping (String) -> Void
+    ) async throws -> String? {
+        setupPythonPaths()
+        guard let python = pythonExecutable else {
+            throw LTXError.pythonNotConfigured
+        }
+        let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
+        let scriptPath = resourcesPath + "/enhance_prompt_preview.py"
+        guard FileManager.default.fileExists(atPath: scriptPath) else {
+            throw LTXError.generationFailed("Preview script not found")
+        }
+        var args = [
+            scriptPath,
+            "--prompt", prompt,
+            "--model-repo", modelRepo,
+            "--temperature", String(temperature),
+            "--resources-path", resourcesPath,
+        ]
+        if let img = sourceImagePath, !img.isEmpty {
+            args.append(contentsOf: ["--image", img])
+        }
+        progressHandler("Loading Gemma for enhancement...")
+        let output = try await runPythonScript(executable: python, arguments: args, timeout: 120)
+        if let data = output.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let enhanced = json["enhanced_prompt"] as? String, !enhanced.isEmpty {
+                return enhanced
+            }
+            if let err = json["error"] as? String {
+                throw LTXError.generationFailed(err)
+            }
+        }
+        return nil
+    }
+
+    private func runPythonScript(
+        executable: String,
+        arguments: [String],
+        timeout: TimeInterval = 60
+    ) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: executable)
+                process.arguments = arguments
+                var env: [String: String] = [:]
+                let pythonBin = URL(fileURLWithPath: executable).deletingLastPathComponent().path
+                env["PATH"] = "\(pythonBin):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
+                env["HOME"] = ProcessInfo.processInfo.environment["HOME"] ?? ""
+                env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? ""
+                env["TMPDIR"] = ProcessInfo.processInfo.environment["TMPDIR"] ?? "/tmp"
+                process.environment = env
+                let stdoutPipe = Pipe()
+                let stderrPipe = Pipe()
+                process.standardOutput = stdoutPipe
+                process.standardError = stderrPipe
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+                    let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if process.terminationStatus != 0 {
+                        let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                        let errStr = String(data: errData, encoding: .utf8) ?? ""
+                        continuation.resume(throwing: LTXError.generationFailed(errStr.isEmpty ? "Exit code \(process.terminationStatus)" : errStr))
+                    } else {
+                        continuation.resume(returning: trimmed)
+                    }
+                } catch {
+                    continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
+                }
+            }
+        }
+    }
+
     private func runPython(
         script: String,
         timeout: TimeInterval = 60,
