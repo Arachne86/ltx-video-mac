@@ -55,7 +55,7 @@ which python3
 
 **Option 2:** Install manually:
 ```bash
-pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
+pip install mlx mlx-vlm mlx-video-with-audio transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
 
 {: .note }
@@ -69,7 +69,7 @@ Make sure you're installing to the same Python that the app is configured to use
 
 **Problem:** Model download appears stuck at a percentage.
 
-**Explanation:** The model is ~90GB. Progress updates every 1%, so each percent is ~900MB. Even at 100Mbps, each percent takes about 70 seconds.
+**Explanation:** The model is ~42GB. Progress updates every 1%, so each percent is ~420MB. Even at 100Mbps, each percent takes about 35 seconds.
 
 **Solutions:**
 1. Be patient - large model downloads take time
@@ -99,7 +99,7 @@ Make sure you're installing to the same Python that the app is configured to use
 
 To force a fresh download:
 ```bash
-rm -rf ~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16
+rm -rf ~/.cache/huggingface/hub/models--notapalindrome--ltx2-mlx-av
 ```
 
 ---
@@ -125,7 +125,7 @@ cat /tmp/ltx_generation.log
 2. Reduce frame count
 3. If model seems corrupted, delete and re-download:
    ```bash
-   rm -rf ~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16
+   rm -rf ~/.cache/huggingface/hub/models--notapalindrome--ltx2-mlx-av
    ```
 
 ### Black video output

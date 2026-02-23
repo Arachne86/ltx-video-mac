@@ -36,14 +36,14 @@ Select a preset from the dropdown to quickly configure parameters:
 
 | Preset | Resolution | Frames | Steps | Best For |
 |:-------|:-----------|:-------|:------|:---------|
-| Quick Preview | 512×320 | 49 | 20 | Quick tests |
-| Standard | 768×512 | 97 | 28 | Balanced quality |
-| High Quality | 768×512 | 121 | 28 | Best results |
-| Portrait | 512×768 | 97 | 28 | Vertical videos |
-| Square | 512×512 | 97 | 28 | Social media |
+| Quick Preview | 512×320 | 49 | 15 | Quick tests |
+| Standard | 768×512 | 121 | 30 | Balanced quality |
+| High Quality | 768×512 | 121 | 40 | Best results |
+| Portrait | 512×768 | 97 | 30 | Vertical videos |
+| Square | 512×512 | 97 | 30 | Social media |
 
 {: .tip }
-The LTX-2 Distilled model uses a 2-stage generation pipeline for high quality output.
+The LTX-2 Unified model uses a 2-stage generation pipeline with built-in audio.
 
 ### 3. Generate
 
@@ -57,6 +57,19 @@ Click the **Generate** button. Progress shows:
 - **Queue** sidebar shows real-time progress
 - **History** tab displays all generated videos with thumbnails
 - Videos save to your configured output directory
+
+## Gemma Prompt Enhancement
+
+Improve results by having Gemma rewrite your prompt with vivid details:
+
+1. Go to **Settings > Generation** and enable **Enable Gemma Prompt Enhancement**
+2. In the prompt view, expand **Prompt Enhancement (Gemma)**
+3. Optionally enable **Use uncensored enhancer** to avoid content filters (first run downloads ~7GB)
+4. Click **Preview enhanced prompt** to see the rewritten prompt before generating
+5. Generate as usual—the enhanced prompt is used automatically
+
+{: .note }
+If enhancement returns empty (e.g. safety filter), the app auto-retries with filtered words replaced, then merges originals back.
 
 ## Image-to-Video
 

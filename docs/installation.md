@@ -42,6 +42,7 @@ The app will search common locations including Homebrew, pyenv, conda, and syste
 Click **Validate Setup** to check for required packages:
 - `mlx` - Apple's machine learning framework
 - `mlx-vlm` - Vision-language models for MLX
+- `mlx-video-with-audio` - Unified audio-video generation (LTX-2)
 - `transformers` - Hugging Face transformers
 - `safetensors` - Fast tensor serialization
 - `huggingface_hub` - Model downloading
@@ -60,7 +61,7 @@ Click the **Install Missing Packages** button in Preferences. The app will run p
 **Option B: Manual Install**
 
 ```bash
-pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm
+pip install mlx mlx-vlm mlx-video-with-audio transformers safetensors huggingface_hub numpy opencv-python tqdm
 ```
 
 {: .note }
@@ -69,7 +70,7 @@ If using a virtual environment, make sure to activate it first, or point the app
 ## First Run - Model Download
 
 {: .warning }
-**Important**: On your first generation, the app will download the LTX-2 model (~90GB) from Hugging Face. This is a one-time download.
+**Important**: On your first generation, the app will download the LTX-2 Unified model (~42GB) from Hugging Face. This is a one-time download.
 
 ### What to Expect
 
@@ -82,7 +83,7 @@ If using a virtual environment, make sure to activate it first, or point the app
 ### Download Progress
 
 The app shows real-time download progress:
-- `Downloading: 14.8GB / 77.8GB (19%)`
+- `Downloading: 8.4GB / 42GB (20%)`
 
 If download is interrupted, it will resume from where it left off.
 
@@ -90,10 +91,16 @@ If download is interrupted, it will resume from where it left off.
 
 Models are cached by Hugging Face in:
 ```
-~/.cache/huggingface/hub/models--mlx-community--LTX-2-distilled-bf16/
+~/.cache/huggingface/hub/models--notapalindrome--ltx2-mlx-av/
 ```
 
 To free up space later, you can delete this folder (the model will re-download on next use).
+
+## Optional: Gemma Prompt Enhancement
+
+For better results, enable **Settings > Generation > Enable Gemma Prompt Enhancement**. Gemma rewrites your prompts with vivid details before generation.
+
+If prompts with certain words (e.g. medical terms) return empty enhancement, enable **Use uncensored enhancer**. First run downloads ~7GB (TheCluster/amoral-gemma-3-12B-v2-mlx-4bit).
 
 ## Verify Installation
 
@@ -147,7 +154,7 @@ xcode-select --install
 
 ### "Missing packages" after install
 - Make sure you're using the same Python the app is configured to use
-- Try: `/path/to/your/python3 -m pip install mlx mlx-vlm transformers safetensors huggingface_hub numpy opencv-python tqdm`
+- Try: `/path/to/your/python3 -m pip install mlx mlx-vlm mlx-video-with-audio transformers safetensors huggingface_hub numpy opencv-python tqdm`
 
 ### "Out of memory" during generation
 - Use smaller resolution (512x320)

@@ -20,15 +20,16 @@ Detailed explanation of all generation parameters for LTX-2.
 
 ## Model
 
-The app uses **LTX-2 Distilled** running on MLX (Apple's machine learning framework).
+The app uses **LTX-2 Unified** running on MLX (Apple's machine learning framework).
 
 | Model | Parameters | Size | Pipeline |
 |:------|:-----------|:-----|:---------|
-| LTX-2 Distilled | 19B | ~90GB | 2-stage generation |
+| LTX-2 Unified | 19B | ~42GB | 2-stage + audio |
 
 The 2-stage pipeline:
 1. **Stage 1:** Generate at half resolution
 2. **Stage 2:** Upsample and refine to full resolution
+3. **Audio:** Synchronized audio generated alongside video
 
 ---
 
@@ -108,7 +109,7 @@ Number of denoising steps per stage.
 |:--------|:------|:--------|
 | Steps | 8-50 | 28 |
 
-The LTX-2 distilled model uses a fixed sigma schedule. More steps provide diminishing returns after ~30.
+The LTX-2 Unified model uses a fixed sigma schedule. More steps provide diminishing returns after ~30.
 
 ### Guidance Scale
 
