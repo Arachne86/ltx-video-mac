@@ -152,6 +152,7 @@ class LTXBridge {
         let script: String
         let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
         let useUncensoredEnhancer = UserDefaults.standard.bool(forKey: "useUncensoredEnhancer")
+        let saveAudioTrackSeparately = UserDefaults.standard.bool(forKey: "saveAudioTrackSeparately")
         // LTX-2 Unified - uses mlx-video-with-audio package
         script = """
 import os
@@ -238,6 +239,9 @@ try:
     if disable_audio:
         cmd.append("--no-audio")
         log("Audio generation disabled")
+    elif \(saveAudioTrackSeparately ? "True" : "False"):
+        cmd.append("--save-audio-separately")
+        log("Saving audio track separately")
     
     log("Starting generation...")
     log(f"Command: {' '.join(cmd)}")

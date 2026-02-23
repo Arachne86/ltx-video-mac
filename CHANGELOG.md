@@ -5,6 +5,15 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.8] - 2026-02-22
+
+### Added
+- **Save audio track separately** - Settings > Generation > Output: toggle to keep .wav alongside video (default: off, audio only in mp4).
+
+### Changed
+- mlx-video-with-audio 0.1.5: --save-audio-separately flag; no longer saves .wav by default.
+- requirements.txt: mlx-video-with-audio>=0.1.5
+
 ## [2.3.7] - 2026-02-22
 
 ### Added

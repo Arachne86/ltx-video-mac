@@ -17,6 +17,7 @@ struct PreferencesView: View {
     @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
     @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
     @AppStorage("useUncensoredEnhancer") private var useUncensoredEnhancer = false
+    @AppStorage("saveAudioTrackSeparately") private var saveAudioTrackSeparately = false
 
     @State private var pythonStatus: (success: Bool, message: String)?
     @State private var pythonDetails: PythonDetails?
@@ -229,7 +230,12 @@ struct PreferencesView: View {
                 Section("Queue") {
                     Toggle("Keep completed items in queue", isOn: $keepCompletedInQueue)
                 }
-                
+
+                Section("Output") {
+                    Toggle("Save audio track separately", isOn: $saveAudioTrackSeparately)
+                        .help("When on, keeps a .wav file alongside each video. Default: off (audio only in mp4).")
+                }
+
                 Section("Prompt Enhancement") {
                     Toggle("Enable Gemma Prompt Enhancement", isOn: $enableGemmaPromptEnhancement)
                         .help("When on, Gemma rewrites your prompt with vivid details (lighting, camera, audio) before generation. Use Preview in the prompt view to see the enhanced prompt first.")
