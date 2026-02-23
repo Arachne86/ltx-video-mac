@@ -540,6 +540,20 @@ except Exception as e:
                 var stderrAccumulated = ""
                 let stderrLock = NSLock()
                 
+                // Initialize log file and persistent handle
+                let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nTime: \(Date())\n"
+                try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
+
+                let logHandle = FileHandle(forWritingAtPath: logFile)
+                try? logHandle?.seekToEnd()
+                let logLock = NSLock()
+
+                defer {
+                    logLock.lock()
+                    try? logHandle?.close()
+                    logLock.unlock()
+                }
+
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
@@ -549,15 +563,9 @@ except Exception as e:
                         stderrLock.unlock()
                         
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
-                            if FileManager.default.fileExists(atPath: logFile) {
-                                if let handle = FileHandle(forWritingAtPath: logFile) {
-                                    handle.seekToEndOfFile()
-                                    handle.write(logData)
-                                    handle.closeFile()
-                                }
-                            } else {
-                                try? logData.write(to: URL(fileURLWithPath: logFile))
-                            }
+                            logLock.lock()
+                            try? logHandle?.write(contentsOf: logData)
+                            logLock.unlock()
                         }
                         
                         stderrHandler?(accumulated)
@@ -565,9 +573,6 @@ except Exception as e:
                 }
                 
                 do {
-                    let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nTime: \(Date())\n"
-                    try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
-                    
                     try process.run()
                     process.waitUntilExit()
                     
@@ -577,10 +582,10 @@ except Exception as e:
                     let output = String(data: outputData, encoding: .utf8) ?? ""
                     
                     let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(outputLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let logData = outputLog.data(using: .utf8) {
+                        logLock.lock()
+                        try? logHandle?.write(contentsOf: logData)
+                        logLock.unlock()
                     }
                     
                     let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -609,10 +614,10 @@ except Exception as e:
                     }
                 } catch {
                     let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(errorLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let logData = errorLog.data(using: .utf8) {
+                        logLock.lock()
+                        try? logHandle?.write(contentsOf: logData)
+                        logLock.unlock()
                     }
                     continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
                 }
