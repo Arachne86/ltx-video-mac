@@ -5,6 +5,16 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2026-02-22
+
+### Removed
+- Legacy LTX-2 Distilled model option (~90GB, video only). App now uses only LTX-2 Unified.
+
+### Changed
+- Model variant picker removed from Preferences. Single model: LTX-2 Unified (audio+video).
+- Removed ltx_generator.py and legacy generation path from LTXBridge.
+- Fix enhanced prompt preview text_config error: use Lightricks/LTX-2 for text encoder when model is unified MLX format.
+
 ## [2.3.4] - 2026-02-22
 
 ### Added

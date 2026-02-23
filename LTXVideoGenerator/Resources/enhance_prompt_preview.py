@@ -62,7 +62,18 @@ def main():
         from mlx_video.models.ltx.text_encoder import LTX2TextEncoder
 
         model_path = get_model_path(args.model_repo)
-        text_encoder_path = model_path
+        model_path = Path(model_path)
+
+        # Unified MLX models (e.g. notapalindrome/ltx2-mlx-av) have model.safetensors but no
+        # text_config in config.json. The text encoder must load from the HuggingFace model.
+        is_unified = (
+            (model_path / "model.safetensors").exists()
+            and not (model_path / "ltx-2-19b-distilled.safetensors").exists()
+        )
+        if is_unified:
+            text_encoder_path = get_model_path("Lightricks/LTX-2")
+        else:
+            text_encoder_path = model_path
 
         text_encoder = LTX2TextEncoder()
         text_encoder.load(model_path=model_path, text_encoder_path=text_encoder_path)
@@ -74,7 +85,8 @@ def main():
         system_prompt = None
         if is_i2v:
             try:
-                prompt_path = Path(text_encoder.__file__).parent / "prompts" / "gemma_i2v_system_prompt.txt"
+                import mlx_video.models.ltx.text_encoder as te
+                prompt_path = Path(te.__file__).parent / "prompts" / "gemma_i2v_system_prompt.txt"
                 if prompt_path.exists():
                     system_prompt = prompt_path.read_text().strip()
             except Exception:

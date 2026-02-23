@@ -124,17 +124,10 @@ class LTXBridge {
         let params = request.parameters
         let seed = params.seed ?? Int.random(in: 0..<Int(Int32.max))
         
-        // Get selected model variant from preferences
-        let modelVariantRaw = UserDefaults.standard.string(forKey: "selectedModelVariant") ?? "unified_av"
-        let modelVariant = LTXModelVariant(rawValue: modelVariantRaw) ?? .unifiedAV
-        let modelRepo = modelVariant.modelRepo
-        let isDistilled = modelVariant.isDistilled
-        let isUnifiedAV = modelVariant.supportsBuiltInAudio
-        
+        let modelRepo = LTXModelVariant.modelRepo
         let isImageToVideo = request.isImageToVideo
         let modeDescription = isImageToVideo ? "image-to-video" : "text-to-video"
-        let audioDescription = isUnifiedAV ? " with audio" : ""
-        progressHandler(0.1, "Starting \(modeDescription)\(audioDescription) with \(modelVariant.displayName)...")
+        progressHandler(0.1, "Starting \(modeDescription) with audio (\(LTXModelVariant.displayName))...")
         
         // Escape the prompt for Python
         let escapedPrompt = request.prompt
@@ -154,46 +147,12 @@ class LTXBridge {
         let genWidth = (params.width / 64) * 64
         let genHeight = (params.height / 64) * 64
         
-        // Get the bundled generator script path based on model variant
         let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
-        let generatorScript = isUnifiedAV
-            ? resourcesPath + "/av_generator.py"
-            : resourcesPath + "/ltx_generator.py"
         
-        // Build arguments for the generator script
-        var scriptArgs = [
-            generatorScript,
-            "--prompt", request.prompt,
-            "--height", String(genHeight),
-            "--width", String(genWidth),
-            "--num-frames", String(params.numFrames),
-            "--seed", String(seed),
-            "--fps", String(params.fps),
-            "--output-path", outputPath,
-            "--model-repo", modelRepo,
-            "--tiling", params.vaeTilingMode,
-            "--repetition-penalty", String(request.gemmaRepetitionPenalty),
-            "--top-p", String(request.gemmaTopP)
-        ]
-        
-        // Add image conditioning if provided
-        if isImageToVideo, let imagePath = request.sourceImagePath {
-            scriptArgs.append(contentsOf: ["--image", imagePath])
-            scriptArgs.append(contentsOf: ["--image-strength", String(params.imageStrength)])
-        }
-        
-        // Add no-audio flag for unified model if audio is disabled
-        if isUnifiedAV && request.disableAudio {
-            scriptArgs.append("--no-audio")
-        }
-        
-        // Generate different scripts based on model variant
         let script: String
         let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
-        if isUnifiedAV {
-            // Unified Audio-Video model - uses mlx-video-with-audio package
-            // Run as module: python -m mlx_video.generate_av (CLI entry point)
-            script = """
+        // LTX-2 Unified - uses mlx-video-with-audio package
+        script = """
 import os
 import sys
 import json
@@ -312,85 +271,6 @@ except Exception as e:
     log_file.close()
     sys.exit(1)
 """
-        } else {
-            // Legacy distilled model - uses bundled ltx_mlx module
-            script = """
-import os
-import sys
-import json
-
-# Set up file logging
-log_file = open("\(logFile)", "w")
-def log(msg):
-    print(msg, file=log_file, flush=True)
-    print(msg, file=sys.stderr, flush=True)
-
-try:
-    log("=== LTX-2 MLX Generation Started ===")
-    log(f"Python: {sys.executable}")
-    
-    # Add Resources directory to path for bundled ltx_mlx module
-    resources_dir = "\(resourcesPath)"
-    sys.path.insert(0, resources_dir)
-    
-    # Check MLX
-    import mlx.core as mx
-    log(f"MLX device: Apple Silicon")
-    
-    # Import bundled generation module
-    from ltx_mlx.generate import generate_video
-    
-    model_repo = "\(modelRepo)"
-    log(f"Model: {model_repo}")
-    
-    # Image-to-video mode
-    source_image_path = "\(escapedImagePath)" if "\(escapedImagePath)" else None
-    mode = "image-to-video" if source_image_path else "text-to-video"
-    log(f"Mode: {mode}")
-    
-    prompt = "\(escapedPrompt)"
-    log(f"Prompt: {prompt[:100]}...")
-    log(f"Size: \(genWidth)x\(genHeight), \(params.numFrames) frames")
-    log(f"Seed: \(seed)")
-    
-    # Build generation kwargs
-    gen_kwargs = {
-        "model_repo": model_repo,
-        "prompt": prompt,
-        "height": \(genHeight),
-        "width": \(genWidth),
-        "num_frames": \(params.numFrames),
-        "seed": \(seed),
-        "fps": \(params.fps),
-        "output_path": "\(outputPath)",
-        "tiling": "\(params.vaeTilingMode)",
-        "repetition_penalty": \(request.gemmaRepetitionPenalty),
-        "top_p": \(request.gemmaTopP),
-        "enable_prompt_enhancement": \(enableGemmaPromptEnhancement ? "True" : "False"),
-    }
-    
-    # Add image conditioning if provided
-    if source_image_path:
-        gen_kwargs["image"] = source_image_path
-        gen_kwargs["image_strength"] = \(params.imageStrength)
-        gen_kwargs["image_frame_idx"] = 0
-        log(f"Image conditioning: {source_image_path}")
-    
-    log("Starting generation...")
-    generate_video(**gen_kwargs)
-    
-    log(f"Video saved to: \(outputPath)")
-    log("Generation complete!")
-    log_file.close()
-    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode, "has_audio": False}))
-except Exception as e:
-    log(f"ERROR: {e}")
-    import traceback
-    log(traceback.format_exc())
-    log_file.close()
-    sys.exit(1)
-"""
-        }
         
         progressHandler(0.05, "Running MLX generation...")
         

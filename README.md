@@ -68,7 +68,7 @@ The model is cached in `~/.cache/huggingface/` and will not be re-downloaded on 
 
 Progress is shown in the app during download.
 
-**Note:** The default unified model (`notapalindrome/ltx2-mlx-av`) generates video with synchronized audio automatically. A legacy video-only model (~90GB) is also available in Preferences.
+**Note:** LTX-2 Unified (`notapalindrome/ltx2-mlx-av`) generates video with synchronized audio automatically.
 
 ## Usage
 
@@ -168,8 +168,7 @@ open LTXVideoGenerator/LTXVideoGenerator.xcodeproj
 - **Frontend**: SwiftUI
 - **Python Bridge**: Subprocess execution with progress streaming
 - **ML Framework**: [MLX](https://github.com/ml-explore/mlx) (Apple's machine learning framework)
-- **Default Model**: [LTX-2 Unified Audio-Video](https://huggingface.co/notapalindrome/ltx2-mlx-av) (~42GB, generates video with synchronized audio)
-- **Legacy Model**: [LTX-2 Distilled](https://huggingface.co/mlx-community/LTX-2-distilled-bf16) (~90GB, video only)
+- **Model**: [LTX-2 Unified](https://huggingface.co/notapalindrome/ltx2-mlx-av) (~42GB, generates video with synchronized audio)
 - **Precision**: bfloat16
 
 ### Architecture

@@ -128,11 +128,7 @@ struct SidebarButton: View {
 struct ModelStatusView: View {
     @EnvironmentObject var generationService: GenerationService
     @StateObject private var apiServer = APIServer.shared
-    @AppStorage("selectedModelVariant") private var selectedModelVariant = "distilled"
     
-    private var currentModelVariant: LTXModelVariant {
-        LTXModelVariant(rawValue: selectedModelVariant) ?? .distilled
-    }
     
     var body: some View {
         VStack(spacing: 8) {
@@ -140,7 +136,7 @@ struct ModelStatusView: View {
             HStack(spacing: 6) {
                 Image(systemName: "cpu")
                     .foregroundStyle(.blue)
-                Text(currentModelVariant.displayName)
+                Text(LTXModelVariant.displayName)
                     .font(.caption.bold())
                 Spacer()
                 Text("MLX")

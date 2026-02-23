@@ -21,7 +21,6 @@ struct PromptInputView: View {
     
     // Audio settings
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
-    @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
     @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
     @State private var voiceoverSource: AudioSource = .mlxAudio
     @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
@@ -44,10 +43,6 @@ struct PromptInputView: View {
     @State private var previewError: String?
     @State private var previewStatusMessage = ""
     
-    // Computed property for current model
-    private var currentModelVariant: LTXModelVariant {
-        LTXModelVariant(rawValue: selectedModelVariant) ?? .unifiedAV
-    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -105,8 +100,7 @@ struct PromptInputView: View {
                         Text("Controls Gemma prompt rewriting. Higher repetition penalty reduces repeated phrases. Lower top-p makes output more focused.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        if currentModelVariant.supportsBuiltInAudio {
-                            Button {
+                        Button {
                                 Task { await runPreview() }
                             } label: {
                                 if isPreviewing {
@@ -118,11 +112,10 @@ struct PromptInputView: View {
                                 }
                             }
                             .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty || isPreviewing)
-                            if isPreviewing, !previewStatusMessage.isEmpty {
-                                Text(previewStatusMessage)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
+                        if isPreviewing, !previewStatusMessage.isEmpty {
+                            Text(previewStatusMessage)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -246,7 +239,7 @@ struct PromptInputView: View {
             }
             
             // Audio included banner for unified model
-            if currentModelVariant.supportsBuiltInAudio {
+            if LTXModelVariant.supportsBuiltInAudio {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: disableAudio ? "waveform.badge.minus" : "waveform.badge.checkmark")
                         .foregroundColor(disableAudio ? .secondary : .green)
@@ -549,7 +542,7 @@ struct PromptInputView: View {
         do {
             let enhanced = try await LTXBridge.shared.previewEnhancedPrompt(
                 prompt: prompt,
-                modelRepo: currentModelVariant.modelRepo,
+                modelRepo: LTXModelVariant.modelRepo,
                 temperature: gemmaTopP,
                 sourceImagePath: sourceImagePath
             ) { status in

@@ -1,60 +1,11 @@
 import SwiftUI
 
-enum LTXModelVariant: String, CaseIterable, Identifiable {
-    case unifiedAV = "unified_av"    // DEFAULT - generates video with synchronized audio
-    case distilled = "distilled"      // Legacy - video only
-    
-    var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .unifiedAV: return "LTX-2 Unified (Audio+Video)"
-        case .distilled: return "LTX-2 Distilled (Video Only)"
-        }
-    }
-    
-    var description: String {
-        switch self {
-        case .unifiedAV: return "Generates video with synchronized audio (~42GB download)"
-        case .distilled: return "Video only, requires separate audio generation (~90GB download)"
-        }
-    }
-    
-    var modelRepo: String {
-        switch self {
-        case .unifiedAV: return "notapalindrome/ltx2-mlx-av"
-        case .distilled: return "mlx-community/LTX-2-distilled-bf16"
-        }
-    }
-    
-    var recommendedSteps: Int {
-        switch self {
-        case .unifiedAV: return 30
-        case .distilled: return 30
-        }
-    }
-    
-    var recommendedGuidance: Double {
-        switch self {
-        case .unifiedAV: return 3.0
-        case .distilled: return 3.0
-        }
-    }
-    
-    var isDistilled: Bool {
-        return true  // Both use distilled architecture
-    }
-    
-    var supportsBuiltInAudio: Bool {
-        self == .unifiedAV
-    }
-    
-    var downloadSize: String {
-        switch self {
-        case .unifiedAV: return "~42GB"
-        case .distilled: return "~90GB"
-        }
-    }
+/// Single model: LTX-2 Unified (audio+video). Legacy distilled model removed.
+enum LTXModelVariant {
+    static let modelRepo = "notapalindrome/ltx2-mlx-av"
+    static let displayName = "LTX-2 Unified"
+    static let downloadSize = "~42GB"
+    static let supportsBuiltInAudio = true
 }
 
 struct PreferencesView: View {
@@ -62,7 +13,6 @@ struct PreferencesView: View {
     @AppStorage("outputDirectory") private var outputDirectory = ""
     @AppStorage("autoLoadModel") private var autoLoadModel = false
     @AppStorage("keepCompletedInQueue") private var keepCompletedInQueue = false
-    @AppStorage("selectedModelVariant") private var selectedModelVariant = "unified_av"
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
     @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
@@ -233,55 +183,20 @@ struct PreferencesView: View {
                 }
                 
                 Section("Model") {
-                    Picker("Model Variant", selection: $selectedModelVariant) {
-                        ForEach(LTXModelVariant.allCases) { variant in
-                            Text(variant.displayName).tag(variant.rawValue)
-                        }
-                    }
-                    
-                    if let variant = LTXModelVariant(rawValue: selectedModelVariant) {
-                        Text(variant.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    // Audio support indicator
-                    if let variant = LTXModelVariant(rawValue: selectedModelVariant), variant.supportsBuiltInAudio {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "waveform.badge.checkmark")
-                                .foregroundStyle(.green)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Audio Generation Included")
-                                    .font(.caption.bold())
-                                Text("This model generates synchronized audio with video automatically.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    
-                    Toggle("Auto-load model on startup", isOn: $autoLoadModel)
-                    
-                    // Model download info
                     HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .foregroundStyle(.orange)
+                        Image(systemName: "waveform.badge.checkmark")
+                            .foregroundStyle(.green)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Model Download")
+                            Text("LTX-2 Unified")
                                 .font(.caption.bold())
-                            if let variant = LTXModelVariant(rawValue: selectedModelVariant) {
-                                Text("Model (\(variant.downloadSize)) will download automatically on first generation. Models are cached in ~/.cache/huggingface/")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text("Model will download automatically on first generation. Models are cached in ~/.cache/huggingface/")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text("Generates video with synchronized audio (~42GB download). Model cached in ~/.cache/huggingface/")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 4)
+                    
+                    Toggle("Auto-load model on startup", isOn: $autoLoadModel)
                 }
                 
                 Section("Storage") {
