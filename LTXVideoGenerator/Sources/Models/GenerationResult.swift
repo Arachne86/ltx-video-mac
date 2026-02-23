@@ -15,6 +15,8 @@ struct GenerationResult: Identifiable, Codable {
     let audioPath: String?       // Path to voiceover audio
     let musicPath: String?       // Path to background music
     let musicGenre: String?      // Music genre used
+    let loraPath: String?        // Path to LoRA (if used)
+    let loraStrength: Double?    // Strength of LoRA (if used)
     let createdAt: Date
     let completedAt: Date
     let duration: TimeInterval
@@ -78,6 +80,8 @@ extension GenerationResult {
             audioPath: nil,
             musicPath: nil,
             musicGenre: nil,
+            loraPath: nil,
+            loraStrength: nil,
             createdAt: Date().addingTimeInterval(-120),
             completedAt: Date(),
             duration: 45.5,

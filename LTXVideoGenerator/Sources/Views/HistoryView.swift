@@ -371,6 +371,13 @@ struct HistoryDetailView: View {
                         DetailItem(label: "Steps", value: "\(result.parameters.numInferenceSteps)")
                         DetailItem(label: "Guidance", value: String(format: "%.1f", result.parameters.guidanceScale))
                         DetailItem(label: "Seed", value: "\(result.seed)")
+
+                        if let loraPath = result.loraPath {
+                            DetailItem(label: "LoRA", value: URL(fileURLWithPath: loraPath).lastPathComponent)
+                            if let strength = result.loraStrength {
+                                DetailItem(label: "LoRA Strength", value: String(format: "%.2f", strength))
+                            }
+                        }
                     }
                     
                     Divider()

@@ -129,153 +129,49 @@ class LTXBridge {
         let modeDescription = isImageToVideo ? "image-to-video" : "text-to-video"
         progressHandler(0.1, "Starting \(modeDescription) with audio (\(LTXModelVariant.displayName))...")
         
-        // Escape the prompt for Python
-        let escapedPrompt = request.prompt
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-        
-        // Escape source image path if provided
-        let escapedImagePath = request.sourceImagePath?
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"") ?? ""
-        
-        // Log file path
-        let logFile = "/tmp/ltx_generation.log"
-        
         // Ensure dimensions are divisible by 64 for MLX
         let genWidth = (params.width / 64) * 64
         let genHeight = (params.height / 64) * 64
         
         let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
+        let scriptPath = resourcesPath + "/av_generator_lora.py"
         
-        let script: String
         let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
         let saveAudioTrackSeparately = UserDefaults.standard.bool(forKey: "saveAudioTrackSeparately")
-        // LTX-2 Unified - uses mlx-video-with-audio package
-        script = """
-import os
-import sys
-import json
-import subprocess
 
-# Set up file logging
-log_file = open("\(logFile)", "w")
-def log(msg):
-    print(msg, file=log_file, flush=True)
-    print(msg, file=sys.stderr, flush=True)
+        var args = [
+            "--prompt", request.prompt,
+            "--height", String(genHeight),
+            "--width", String(genWidth),
+            "--num-frames", String(params.numFrames),
+            "--seed", String(seed),
+            "--fps", String(params.fps),
+            "--output-path", outputPath,
+            "--model-repo", modelRepo,
+            "--tiling", params.vaeTilingMode
+        ]
 
-try:
-    log("=== LTX-2 Unified AV Generation Started ===")
-    log(f"Python: {sys.executable}")
-    
-    # Check MLX
-    import mlx.core as mx
-    log(f"MLX device: Apple Silicon")
-    
-    model_repo = "\(modelRepo)"
-    log(f"Model: {model_repo}")
-    
-    # Image-to-video mode
-    source_image_path = "\(escapedImagePath)" if "\(escapedImagePath)" else None
-    mode = "image-to-video" if source_image_path else "text-to-video"
-    log(f"Mode: {mode} (with audio)")
-    
-    prompt = '''\(escapedPrompt)'''
-    log(f"Prompt: {prompt[:100]}...")
-    log(f"Size: \(genWidth)x\(genHeight), \(params.numFrames) frames")
-    log(f"Seed: \(seed)")
-    
-    # Build CLI args for mlx_video.generate_av module
-    # Note: mlx_video.generate_av uses --enhance-prompt/--temperature
-    # instead of --repetition-penalty/--top-p
-    cmd = [
-        sys.executable, "-m", "mlx_video.generate_av",
-        "--prompt", prompt,
-        "--height", str(\(genHeight)),
-        "--width", str(\(genWidth)),
-        "--num-frames", str(\(params.numFrames)),
-        "--seed", str(\(seed)),
-        "--fps", str(\(params.fps)),
-        "--output-path", "\(outputPath)",
-        "--model-repo", model_repo,
-        "--tiling", "\(params.vaeTilingMode)",
-    ]
-    
-    # Add --enhance-prompt only when enabled in Settings
-    enable_enhancement = \(enableGemmaPromptEnhancement ? "True" : "False")
-    if enable_enhancement:
-        cmd.append("--enhance-prompt")
-        cmd.append("--use-uncensored-enhancer")
-        cmd.extend(["--temperature", str(\(request.gemmaTopP))])
-        # Pre-flight: copy bundled prompts into mlx_video if missing (pip package omits them)
-        try:
-            from pathlib import Path
-            import shutil
-            resources_path = Path("\(resourcesPath)")
-            bundled_prompts = resources_path / "prompts"
-            import mlx_video.models.ltx.text_encoder as te
-            target_dir = Path(te.__file__).parent / "prompts"
-            for name in ["gemma_t2v_system_prompt.txt", "gemma_i2v_system_prompt.txt"]:
-                src = bundled_prompts / name
-                dst = target_dir / name
-                if src.exists() and not dst.exists():
-                    target_dir.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src, dst)
-                    log(f"Injected missing prompt: {name}")
-        except Exception as inj_err:
-            log(f"Warning: could not inject prompts: {inj_err}")
-    
-    # Add image conditioning if provided
-    if source_image_path:
-        cmd.extend(["--image", source_image_path])
-        cmd.extend(["--image-strength", str(\(params.imageStrength))])
-        log(f"Image conditioning: {source_image_path}")
-    
-    # Disable audio if requested
-    disable_audio = \(request.disableAudio ? "True" : "False")
-    if disable_audio:
-        cmd.append("--no-audio")
-        log("Audio generation disabled")
-    elif \(saveAudioTrackSeparately ? "True" : "False"):
-        cmd.append("--save-audio-separately")
-        log("Saving audio track separately")
-    
-    log("Starting generation...")
-    log(f"Command: {' '.join(cmd)}")
-    
-    # Run the CLI module and stream output
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    
-    # Stream stderr for progress updates
-    for line in process.stderr:
-        line = line.strip()
-        if line:
-            log(line)
-            print(line, file=sys.stderr)
-    
-    # Wait for completion
-    stdout, _ = process.communicate()
-    
-    if process.returncode != 0:
-        raise RuntimeError(f"mlx_video.generate_av failed with code {process.returncode}")
-    
-    log(f"Video with audio saved to: \(outputPath)")
-    log("Generation complete!")
-    log_file.close()
-    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode, "has_audio": not disable_audio}))
-except Exception as e:
-    log(f"ERROR: {e}")
-    import traceback
-    log(traceback.format_exc())
-    log_file.close()
-    sys.exit(1)
-"""
+        if enableGemmaPromptEnhancement {
+            args.append("--enhance-prompt")
+            args.append("--use-uncensored-enhancer")
+            args.append(contentsOf: ["--temperature", String(request.gemmaTopP)])
+        }
+
+        if let imagePath = request.sourceImagePath, !imagePath.isEmpty {
+            args.append(contentsOf: ["--image", imagePath])
+            args.append(contentsOf: ["--image-strength", String(params.imageStrength)])
+        }
+
+        if request.disableAudio {
+            args.append("--no-audio")
+        } else if saveAudioTrackSeparately {
+            args.append("--save-audio-separately")
+        }
+
+        if let loraPath = request.loraPath, !loraPath.isEmpty {
+            args.append(contentsOf: ["--lora", loraPath])
+            args.append(contentsOf: ["--lora-strength", String(request.loraStrength)])
+        }
         
         progressHandler(0.05, "Running MLX generation...")
         
@@ -283,7 +179,7 @@ except Exception as e:
         let enhancedPromptLock = NSLock()
         var capturedEnhancedPrompt: String? = nil
         
-        let output = try await runPython(script: script, timeout: 3600) { stderr in
+        let output = try await runPythonFile(path: scriptPath, arguments: args, timeout: 3600) { stderr in
             // Capture enhanced prompt from stderr
             // Our generate.py emits "ENHANCED_PROMPT:..." and mlx_video may emit "Enhanced prompt: ..."
             for line in stderr.components(separatedBy: "\n") {
@@ -599,6 +495,130 @@ except Exception as e:
                         let isOnlyHarmless = harmlessPatterns.allSatisfy { stderr.contains($0) } ||
                                             stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         
+                        if !trimmedOutput.isEmpty && isOnlyHarmless {
+                            continuation.resume(returning: trimmedOutput)
+                        } else {
+                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check /tmp/ltx_generation.log"))
+                        }
+                    } else {
+                        continuation.resume(returning: trimmedOutput)
+                    }
+                } catch {
+                    let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
+                    if let handle = FileHandle(forWritingAtPath: logFile) {
+                        handle.seekToEndOfFile()
+                        handle.write(errorLog.data(using: .utf8)!)
+                        handle.closeFile()
+                    }
+                    continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
+                }
+            }
+        }
+    }
+
+    private func runPythonFile(
+        path: String,
+        arguments: [String],
+        timeout: TimeInterval = 60,
+        stderrHandler: ((String) -> Void)? = nil
+    ) async throws -> String {
+        guard let python = pythonExecutable else {
+            throw LTXError.pythonNotConfigured
+        }
+
+        let logFile = "/tmp/ltx_generation.log"
+
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: python)
+                var args = [path]
+                args.append(contentsOf: arguments)
+                process.arguments = args
+
+                // Clean environment for MLX
+                var env: [String: String] = [:]
+
+                let pythonBin = URL(fileURLWithPath: python).deletingLastPathComponent().path
+                env["PATH"] = "\(pythonBin):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
+                env["HOME"] = ProcessInfo.processInfo.environment["HOME"] ?? ""
+                env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? ""
+                env["TMPDIR"] = ProcessInfo.processInfo.environment["TMPDIR"] ?? "/tmp"
+
+                // MLX uses Metal - inherit any Metal-related env vars
+                if let metalDevice = ProcessInfo.processInfo.environment["MTL_DEVICE_WRAPPER_TYPE"] {
+                    env["MTL_DEVICE_WRAPPER_TYPE"] = metalDevice
+                }
+
+                process.environment = env
+
+                let stdoutPipe = Pipe()
+                let stderrPipe = Pipe()
+                process.standardOutput = stdoutPipe
+                process.standardError = stderrPipe
+
+                var stderrAccumulated = ""
+                let stderrLock = NSLock()
+
+                stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+                    let data = handle.availableData
+                    if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
+                        stderrLock.lock()
+                        stderrAccumulated += str
+                        let accumulated = stderrAccumulated
+                        stderrLock.unlock()
+
+                        if let logData = ("[STDERR] " + str).data(using: .utf8) {
+                            if FileManager.default.fileExists(atPath: logFile) {
+                                if let handle = FileHandle(forWritingAtPath: logFile) {
+                                    handle.seekToEndOfFile()
+                                    handle.write(logData)
+                                    handle.closeFile()
+                                }
+                            } else {
+                                try? logData.write(to: URL(fileURLWithPath: logFile))
+                            }
+                        }
+
+                        stderrHandler?(accumulated)
+                    }
+                }
+
+                do {
+                    let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nFile: \(path)\nTime: \(Date())\n"
+                    try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
+
+                    try process.run()
+                    process.waitUntilExit()
+
+                    stderrPipe.fileHandleForReading.readabilityHandler = nil
+
+                    let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+
+                    let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
+                    if let handle = FileHandle(forWritingAtPath: logFile) {
+                        handle.seekToEndOfFile()
+                        handle.write(outputLog.data(using: .utf8)!)
+                        handle.closeFile()
+                    }
+
+                    let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let data = trimmedOutput.data(using: .utf8),
+                       let _ = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        continuation.resume(returning: trimmedOutput)
+                        return
+                    }
+
+                    if process.terminationStatus != 0 {
+                        stderrLock.lock()
+                        let stderr = stderrAccumulated
+                        stderrLock.unlock()
+
+                        let harmlessPatterns = ["UserWarning", "FutureWarning"]
+                        let isOnlyHarmless = harmlessPatterns.allSatisfy { stderr.contains($0) } ||
+                                            stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
                         if !trimmedOutput.isEmpty && isOnlyHarmless {
                             continuation.resume(returning: trimmedOutput)
                         } else {
