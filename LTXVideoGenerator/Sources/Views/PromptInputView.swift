@@ -22,6 +22,7 @@ struct PromptInputView: View {
     // Audio settings
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
+    @AppStorage("useUncensoredEnhancer") private var useUncensoredEnhancer = false
     @State private var voiceoverSource: AudioSource = .mlxAudio
     @State private var selectedElevenLabsVoice: String = "21m00Tcm4TlvDq8ikWAM"
     @State private var selectedMLXVoice: String = "af_heart"
@@ -545,7 +546,8 @@ struct PromptInputView: View {
                 prompt: prompt,
                 modelRepo: LTXModelVariant.modelRepo,
                 temperature: gemmaTopP,
-                sourceImagePath: sourceImagePath
+                sourceImagePath: sourceImagePath,
+                useUncensoredEnhancer: useUncensoredEnhancer
             ) { status in
                 DispatchQueue.main.async { previewStatusMessage = status }
             }

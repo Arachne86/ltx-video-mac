@@ -76,9 +76,61 @@ def main():
         help="App Resources path for bundled prompts (pre-flight injection)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--use-uncensored-enhancer",
+        action="store_true",
+        help="Use uncensored Gemma 12B (avoids content filters)",
+    )
     args = parser.parse_args()
 
     try:
+        # Uncensored enhancer path: use mlx_lm with TheCluster model
+        if args.use_uncensored_enhancer:
+            # Pre-flight: inject bundled prompts if mlx_video is missing them
+            if args.resources_path:
+                try:
+                    from pathlib import Path as P
+                    import shutil
+
+                    resources_path = P(args.resources_path)
+                    bundled_prompts = (
+                        resources_path / "ltx_mlx" / "models" / "ltx" / "prompts"
+                    )
+                    import mlx_video.models.ltx.text_encoder as te
+
+                    target_dir = P(te.__file__).parent / "prompts"
+                    for name in [
+                        "gemma_t2v_system_prompt.txt",
+                        "gemma_i2v_system_prompt.txt",
+                    ]:
+                        src = bundled_prompts / name
+                        dst = target_dir / name
+                        if src.exists() and not dst.exists():
+                            target_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(src, dst)
+                except Exception:
+                    pass
+            from mlx_video.models.ltx.enhance_prompt import enhance_with_model
+
+            system_prompt = None
+            if args.image:
+                try:
+                    from mlx_video.models.ltx.enhance_prompt import _load_system_prompt
+
+                    system_prompt = _load_system_prompt("gemma_i2v_system_prompt.txt")
+                except Exception:
+                    pass
+            enhanced = enhance_with_model(
+                args.prompt,
+                system_prompt=system_prompt,
+                temperature=args.temperature,
+                seed=args.seed,
+                max_tokens=256,
+                verbose=False,
+            )
+            print(json.dumps({"enhanced_prompt": enhanced or ""}))
+            return
+
         # Pre-flight: inject bundled prompts if mlx_video is missing them
         if args.resources_path:
             try:

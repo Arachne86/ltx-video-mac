@@ -84,9 +84,10 @@ When enabled in **Settings > Generation**, Gemma rewrites your prompt before gen
 
 1. Go to **Settings > Generation**
 2. Turn on **Enable Gemma Prompt Enhancement**
-3. In the prompt view, expand **Prompt Enhancement (Gemma)** and adjust sliders (Repetition Penalty, Top-P) if desired
-4. Click **Preview enhanced prompt** to see the enhanced version before generating
-5. Generate as usual—the enhanced prompt is used automatically
+3. Optionally turn on **Use uncensored enhancer** to avoid content filters (first run downloads ~7GB)
+4. In the prompt view, expand **Prompt Enhancement (Gemma)** and adjust sliders (Repetition Penalty, Top-P) if desired
+5. Click **Preview enhanced prompt** to see the enhanced version before generating
+6. Generate as usual—the enhanced prompt is used automatically
 
 ### Tips for Better Results
 

@@ -5,6 +5,15 @@ All notable changes to LTX Video Generator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.7] - 2026-02-22
+
+### Added
+- **Uncensored prompt enhancer** - Settings > Generation: "Use uncensored enhancer" toggle (when Gemma enhancement is on). Uses TheCluster/amoral-gemma-3-12B-v2-mlx-4bit to avoid content filters on words like urine, blood, etc. First run downloads ~7GB. Progress UI shows "Loading uncensored prompt enhancer (first run may download ~7GB)..." during generation.
+
+### Changed
+- mlx-video-with-audio: New `enhance_prompt.py` module and `--use-uncensored-enhancer` CLI flag for generate_av.
+- Preview button uses uncensored model when the setting is on.
+
 ## [2.3.6] - 2026-02-22
 
 ### Added

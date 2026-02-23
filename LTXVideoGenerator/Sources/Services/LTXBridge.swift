@@ -151,6 +151,7 @@ class LTXBridge {
         
         let script: String
         let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
+        let useUncensoredEnhancer = UserDefaults.standard.bool(forKey: "useUncensoredEnhancer")
         // LTX-2 Unified - uses mlx-video-with-audio package
         script = """
 import os
@@ -205,6 +206,8 @@ try:
     enable_enhancement = \(enableGemmaPromptEnhancement ? "True" : "False")
     if enable_enhancement:
         cmd.append("--enhance-prompt")
+        if \(useUncensoredEnhancer ? "True" : "False"):
+            cmd.append("--use-uncensored-enhancer")
         cmd.extend(["--temperature", str(\(request.gemmaTopP))])
         # Pre-flight: copy bundled prompts into mlx_video if missing (pip package omits them)
         try:
@@ -403,6 +406,7 @@ except Exception as e:
         modelRepo: String,
         temperature: Double,
         sourceImagePath: String?,
+        useUncensoredEnhancer: Bool = false,
         progressHandler: @escaping (String) -> Void
     ) async throws -> String? {
         setupPythonPaths()
@@ -424,7 +428,12 @@ except Exception as e:
         if let img = sourceImagePath, !img.isEmpty {
             args.append(contentsOf: ["--image", img])
         }
-        progressHandler("Loading Gemma for enhancement...")
+        if useUncensoredEnhancer {
+            args.append("--use-uncensored-enhancer")
+        }
+        progressHandler(useUncensoredEnhancer
+            ? "Loading uncensored enhancer (first run may download ~7GB)..."
+            : "Loading Gemma for enhancement...")
         let output = try await runPythonScript(executable: python, arguments: args, timeout: 120)
         if let data = output.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {

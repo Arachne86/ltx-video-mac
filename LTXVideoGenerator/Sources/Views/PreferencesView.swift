@@ -16,7 +16,8 @@ struct PreferencesView: View {
     @AppStorage("elevenLabsApiKey") private var elevenLabsApiKey = ""
     @AppStorage("defaultAudioSource") private var defaultAudioSource = "elevenlabs"
     @AppStorage("enableGemmaPromptEnhancement") private var enableGemmaPromptEnhancement = false
-    
+    @AppStorage("useUncensoredEnhancer") private var useUncensoredEnhancer = false
+
     @State private var pythonStatus: (success: Bool, message: String)?
     @State private var pythonDetails: PythonDetails?
     @State private var isValidating = false
@@ -232,6 +233,10 @@ struct PreferencesView: View {
                 Section("Prompt Enhancement") {
                     Toggle("Enable Gemma Prompt Enhancement", isOn: $enableGemmaPromptEnhancement)
                         .help("When on, Gemma rewrites your prompt with vivid details (lighting, camera, audio) before generation. Use Preview in the prompt view to see the enhanced prompt first.")
+                    if enableGemmaPromptEnhancement {
+                        Toggle("Use uncensored enhancer", isOn: $useUncensoredEnhancer)
+                            .help("Uses uncensored Gemma 12B to avoid content filters on words like urine, blood, etc. First run downloads ~7GB.")
+                    }
                     Text("Uses Gemma to rewrite prompts with vivid details for better video generation. Requires the mlx-video-with-audio package.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
