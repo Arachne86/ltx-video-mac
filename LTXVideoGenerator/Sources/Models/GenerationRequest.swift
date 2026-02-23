@@ -13,6 +13,8 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
     let disableAudio: Bool       // Skip audio in unified AV model
     let gemmaRepetitionPenalty: Double  // Gemma prompt enhancement repetition penalty
     let gemmaTopP: Double              // Gemma prompt enhancement top-p sampling
+    let loraPath: String?        // Path to LoRA safetensors file
+    let loraStrength: Double     // Strength of LoRA application (default 1.0)
     var parameters: GenerationParameters
     let createdAt: Date
     var status: GenerationStatus
@@ -45,6 +47,8 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
         disableAudio: Bool = false,
         gemmaRepetitionPenalty: Double = 1.2,
         gemmaTopP: Double = 0.9,
+        loraPath: String? = nil,
+        loraStrength: Double = 1.0,
         parameters: GenerationParameters = .default,
         createdAt: Date = Date(),
         status: GenerationStatus = .pending
@@ -61,6 +65,8 @@ struct GenerationRequest: Identifiable, Codable, Equatable {
         self.disableAudio = disableAudio
         self.gemmaRepetitionPenalty = gemmaRepetitionPenalty
         self.gemmaTopP = gemmaTopP
+        self.loraPath = loraPath
+        self.loraStrength = loraStrength
         self.parameters = parameters
         self.createdAt = createdAt
         self.status = status
