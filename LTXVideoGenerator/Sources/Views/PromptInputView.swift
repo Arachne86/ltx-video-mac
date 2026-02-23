@@ -17,6 +17,9 @@ struct PromptInputView: View {
     @State private var sourceImagePath: String?
     @State private var sourceImageThumbnail: NSImage?
     @State private var showCompletedIndicator = false
+    @State private var showLoRA = false
+    @State private var loraPath: String?
+    @State private var loraStrength: Double = 1.0
     @FocusState private var isPromptFocused: Bool
     
     // Audio settings
@@ -127,6 +130,84 @@ struct PromptInputView: View {
                     .foregroundStyle(.secondary)
             }
             
+            // LoRA section
+            DisclosureGroup(isExpanded: $showLoRA) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let path = loraPath {
+                        // Show selected LoRA
+                        HStack(spacing: 12) {
+                            Image(systemName: "puzzlepiece.extension.fill")
+                                .font(.title2)
+                                .foregroundStyle(.purple)
+                                .frame(width: 40, height: 40)
+                                .background(Color.purple.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(URL(fileURLWithPath: path).lastPathComponent)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+
+                                Button(role: .destructive) {
+                                    loraPath = nil
+                                    loraStrength = 1.0
+                                } label: {
+                                    Label("Remove", systemImage: "xmark.circle.fill")
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.red)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                        )
+
+                        Divider()
+
+                        ParameterSlider(
+                            title: "LoRA Strength",
+                            value: $loraStrength,
+                            range: 0.0...2.0,
+                            step: 0.05,
+                            icon: "slider.horizontal.3",
+                            format: "%.2f"
+                        )
+                    } else {
+                        // Show picker button
+                        Button {
+                            selectLoRA()
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle")
+                                Text("Select LoRA (.safetensors)...")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(.top, 8)
+            } label: {
+                HStack {
+                    Label("LoRA Adapter", systemImage: "puzzlepiece.extension")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    if loraPath != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    }
+                }
+            }
+
             // Image-to-Video section
             DisclosureGroup(isExpanded: $showImageToVideo) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -575,6 +656,8 @@ struct PromptInputView: View {
             disableAudio: disableAudio,
             gemmaRepetitionPenalty: gemmaRepetitionPenalty,
             gemmaTopP: gemmaTopP,
+            loraPath: loraPath,
+            loraStrength: loraStrength,
             parameters: parameters
         )
         generationService.addToQueue(request)
@@ -593,6 +676,8 @@ struct PromptInputView: View {
             disableAudio: disableAudio,
             gemmaRepetitionPenalty: gemmaRepetitionPenalty,
             gemmaTopP: gemmaTopP,
+            loraPath: loraPath,
+            loraStrength: loraStrength,
             parameters: parameters
         )
         generationService.addToQueue(request)
@@ -612,6 +697,8 @@ struct PromptInputView: View {
                 disableAudio: disableAudio,
                 gemmaRepetitionPenalty: gemmaRepetitionPenalty,
                 gemmaTopP: gemmaTopP,
+                loraPath: loraPath,
+                loraStrength: loraStrength,
                 parameters: GenerationParameters(
                     numInferenceSteps: parameters.numInferenceSteps,
                     guidanceScale: parameters.guidanceScale,
@@ -676,6 +763,21 @@ struct PromptInputView: View {
     private func clearSourceImage() {
         sourceImagePath = nil
         sourceImageThumbnail = nil
+    }
+
+    private func selectLoRA() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [UTType(filenameExtension: "safetensors")!]
+        panel.message = "Select LoRA weights"
+        panel.prompt = "Select"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            loraPath = url.path
+            showLoRA = true
+        }
     }
 }
 
