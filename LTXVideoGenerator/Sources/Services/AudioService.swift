@@ -641,54 +641,21 @@ class AudioService: ObservableObject {
         outputURL: URL,
         progressHandler: @escaping (Double, String) -> Void
     ) async throws {
-        progressHandler(0.1, "Merging audio with video...")
-        
-        // Find ffmpeg
-        let ffmpegPaths = [
-            "/opt/homebrew/bin/ffmpeg",
-            "/usr/local/bin/ffmpeg",
-            "/usr/bin/ffmpeg"
-        ]
-        
-        guard let ffmpegPath = ffmpegPaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
-            throw AudioError.ffmpegFailed("FFmpeg not found. Install with: brew install ffmpeg")
-        }
-        
-        // FFmpeg command: combine video and audio
-        // -y: overwrite output
-        // -i: input files
-        // -c:v copy: copy video stream without re-encoding
-        // -c:a aac: encode audio as AAC
-        // Note: Do NOT use -shortest as it truncates video to audio length
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: ffmpegPath)
-        process.arguments = [
-            "-y",
-            "-i", videoURL.path,
-            "-i", audioURL.path,
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            outputURL.path
-        ]
-        
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
-        process.standardOutput = Pipe()
-        
-        try process.run()
-        
-        progressHandler(0.5, "Processing...")
-        
-        process.waitUntilExit()
-        
-        if process.terminationStatus != 0 {
-            let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw AudioError.ffmpegFailed(errorOutput)
-        }
-        
-        progressHandler(1.0, "Merge complete")
+        try await runFFmpeg(
+            arguments: [
+                "-y",
+                "-i", videoURL.path,
+                "-i", audioURL.path,
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                outputURL.path
+            ],
+            initialMessage: "Merging audio with video...",
+            processingMessage: "Processing...",
+            completionMessage: "Merge complete",
+            progressHandler: progressHandler
+        )
     }
     
     // MARK: - Full Pipeline
@@ -913,60 +880,26 @@ class AudioService: ObservableObject {
         outputURL: URL,
         progressHandler: @escaping (Double, String) -> Void
     ) async throws {
-        progressHandler(0.1, "Merging music with video...")
-        
-        // Find ffmpeg
-        let ffmpegPaths = [
-            "/opt/homebrew/bin/ffmpeg",
-            "/usr/local/bin/ffmpeg",
-            "/usr/bin/ffmpeg"
-        ]
-        
-        guard let ffmpegPath = ffmpegPaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
-            throw AudioError.ffmpegFailed("FFmpeg not found. Install with: brew install ffmpeg")
-        }
-        
-        // FFmpeg command: combine video and music
-        // -y: overwrite output
-        // -stream_loop -1: loop music if needed
-        // -c:v copy: copy video stream without re-encoding
-        // -c:a aac: encode audio as AAC
-        // -shortest: stop when video ends
-        // -af volume=0.3: reduce music volume to 30% for background
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: ffmpegPath)
-        process.arguments = [
-            "-y",
-            "-i", videoURL.path,
-            "-stream_loop", "-1",
-            "-i", musicURL.path,
-            "-c:v", "copy",
-            "-filter:a", "volume=0.3",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            outputURL.path
-        ]
-        
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
-        process.standardOutput = Pipe()
-        
-        try process.run()
-        
-        progressHandler(0.5, "Processing...")
-        
-        process.waitUntilExit()
-        
-        if process.terminationStatus != 0 {
-            let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw AudioError.ffmpegFailed(errorOutput)
-        }
-        
-        progressHandler(1.0, "Music merge complete")
+        try await runFFmpeg(
+            arguments: [
+                "-y",
+                "-i", videoURL.path,
+                "-stream_loop", "-1",
+                "-i", musicURL.path,
+                "-c:v", "copy",
+                "-filter:a", "volume=0.3",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                outputURL.path
+            ],
+            initialMessage: "Merging music with video...",
+            processingMessage: "Processing...",
+            completionMessage: "Music merge complete",
+            progressHandler: progressHandler
+        )
     }
     
     // MARK: - Full Audio Merge (video + voiceover + music)
@@ -978,9 +911,40 @@ class AudioService: ObservableObject {
         outputURL: URL,
         progressHandler: @escaping (Double, String) -> Void
     ) async throws {
-        progressHandler(0.1, "Merging voiceover and music with video...")
+        try await runFFmpeg(
+            arguments: [
+                "-y",
+                "-i", videoURL.path,
+                "-i", voiceoverURL.path,
+                "-stream_loop", "-1",
+                "-i", musicURL.path,
+                "-c:v", "copy",
+                "-filter_complex", "[1:a]apad[voicepad];[voicepad]volume=1.0[voice];[2:a]volume=0.2[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[aout]",
+                "-map", "0:v:0",
+                "-map", "[aout]",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                outputURL.path
+            ],
+            initialMessage: "Merging voiceover and music with video...",
+            processingMessage: "Processing audio mix...",
+            completionMessage: "Audio merge complete",
+            progressHandler: progressHandler
+        )
+    }
+
+    // MARK: - FFmpeg Runner
+
+    private func runFFmpeg(
+        arguments: [String],
+        initialMessage: String,
+        processingMessage: String,
+        completionMessage: String,
+        progressHandler: @escaping (Double, String) -> Void
+    ) async throws {
+        progressHandler(0.1, initialMessage)
         
-        // Find ffmpeg
         let ffmpegPaths = [
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
@@ -991,28 +955,9 @@ class AudioService: ObservableObject {
             throw AudioError.ffmpegFailed("FFmpeg not found. Install with: brew install ffmpeg")
         }
         
-        // FFmpeg command: combine video, voiceover, and music
-        // Music is ducked (lowered volume) and voiceover is kept at full volume
-        // Using amix filter to blend audio tracks
-        // Music loops via -stream_loop -1, -t matches video length
-        // duration=longest ensures music continues after voiceover ends
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ffmpegPath)
-        process.arguments = [
-            "-y",
-            "-i", videoURL.path,
-            "-i", voiceoverURL.path,
-            "-stream_loop", "-1",
-            "-i", musicURL.path,
-            "-c:v", "copy",
-            "-filter_complex", "[1:a]apad[voicepad];[voicepad]volume=1.0[voice];[2:a]volume=0.2[music];[voice][music]amix=inputs=2:duration=longest:dropout_transition=2[aout]",
-            "-map", "0:v:0",
-            "-map", "[aout]",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            outputURL.path
-        ]
+        process.arguments = arguments
         
         let stderrPipe = Pipe()
         process.standardError = stderrPipe
@@ -1020,7 +965,7 @@ class AudioService: ObservableObject {
         
         try process.run()
         
-        progressHandler(0.5, "Processing audio mix...")
+        progressHandler(0.5, processingMessage)
         
         process.waitUntilExit()
         
@@ -1030,9 +975,9 @@ class AudioService: ObservableObject {
             throw AudioError.ffmpegFailed(errorOutput)
         }
         
-        progressHandler(1.0, "Audio merge complete")
+        progressHandler(1.0, completionMessage)
     }
-    
+
     // MARK: - Python Runner
     
     private func runPython(
