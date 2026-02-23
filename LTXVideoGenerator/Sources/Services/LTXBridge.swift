@@ -129,29 +129,37 @@ class LTXBridge {
         let modeDescription = isImageToVideo ? "image-to-video" : "text-to-video"
         progressHandler(0.1, "Starting \(modeDescription) with audio (\(LTXModelVariant.displayName))...")
         
-        // Escape the prompt for Python
-        let escapedPrompt = request.prompt
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-        
-        // Escape source image path if provided
-        let escapedImagePath = request.sourceImagePath?
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"") ?? ""
-        
-        // Log file path
-        let logFile = "/tmp/ltx_generation.log"
-        
         // Ensure dimensions are divisible by 64 for MLX
         let genWidth = (params.width / 64) * 64
         let genHeight = (params.height / 64) * 64
         
         let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
-        
-        let script: String
+        let logFile = "/tmp/ltx_generation.log"
         let enableGemmaPromptEnhancement = UserDefaults.standard.bool(forKey: "enableGemmaPromptEnhancement")
         let saveAudioTrackSeparately = UserDefaults.standard.bool(forKey: "saveAudioTrackSeparately")
+
+        // Pass all parameters via environment variables to prevent code injection
+        let pythonEnv: [String: String] = [
+            "LTX_PROMPT": request.prompt,
+            "LTX_IMAGE_PATH": request.sourceImagePath ?? "",
+            "LTX_MODEL_REPO": modelRepo,
+            "LTX_OUTPUT_PATH": outputPath,
+            "LTX_WIDTH": String(genWidth),
+            "LTX_HEIGHT": String(genHeight),
+            "LTX_NUM_FRAMES": String(params.numFrames),
+            "LTX_SEED": String(seed),
+            "LTX_FPS": String(params.fps),
+            "LTX_VAE_TILING": params.vaeTilingMode,
+            "LTX_IMAGE_STRENGTH": String(params.imageStrength),
+            "LTX_TOP_P": String(request.gemmaTopP),
+            "LTX_RESOURCES_PATH": resourcesPath,
+            "LTX_LOG_FILE": logFile,
+            "LTX_ENABLE_ENHANCEMENT": enableGemmaPromptEnhancement ? "1" : "0",
+            "LTX_DISABLE_AUDIO": request.disableAudio ? "1" : "0",
+            "LTX_SAVE_AUDIO_SEPARATELY": saveAudioTrackSeparately ? "1" : "0"
+        ]
+
+        let script: String
         // LTX-2 Unified - uses mlx-video-with-audio package
         script = """
 import os
@@ -159,8 +167,28 @@ import sys
 import json
 import subprocess
 
+# Load parameters from environment
+log_file_path = os.environ.get("LTX_LOG_FILE", "/tmp/ltx_generation.log")
+model_repo = os.environ.get("LTX_MODEL_REPO", "")
+source_image_path = os.environ.get("LTX_IMAGE_PATH")
+if not source_image_path: source_image_path = None
+prompt = os.environ.get("LTX_PROMPT", "")
+gen_width = int(os.environ.get("LTX_WIDTH", "0"))
+gen_height = int(os.environ.get("LTX_HEIGHT", "0"))
+num_frames = int(os.environ.get("LTX_NUM_FRAMES", "0"))
+seed = int(os.environ.get("LTX_SEED", "0"))
+fps = int(os.environ.get("LTX_FPS", "24"))
+output_path = os.environ.get("LTX_OUTPUT_PATH", "")
+vae_tiling = os.environ.get("LTX_VAE_TILING", "")
+image_strength = float(os.environ.get("LTX_IMAGE_STRENGTH", "1.0"))
+top_p = float(os.environ.get("LTX_TOP_P", "1.0"))
+resources_path = os.environ.get("LTX_RESOURCES_PATH", "")
+enable_enhancement = os.environ.get("LTX_ENABLE_ENHANCEMENT") == "1"
+disable_audio = os.environ.get("LTX_DISABLE_AUDIO") == "1"
+save_audio_separately = os.environ.get("LTX_SAVE_AUDIO_SEPARATELY") == "1"
+
 # Set up file logging
-log_file = open("\(logFile)", "w")
+log_file = open(log_file_path, "w")
 def log(msg):
     print(msg, file=log_file, flush=True)
     print(msg, file=sys.stderr, flush=True)
@@ -173,47 +201,40 @@ try:
     import mlx.core as mx
     log(f"MLX device: Apple Silicon")
     
-    model_repo = "\(modelRepo)"
     log(f"Model: {model_repo}")
     
     # Image-to-video mode
-    source_image_path = "\(escapedImagePath)" if "\(escapedImagePath)" else None
     mode = "image-to-video" if source_image_path else "text-to-video"
     log(f"Mode: {mode} (with audio)")
     
-    prompt = '''\(escapedPrompt)'''
     log(f"Prompt: {prompt[:100]}...")
-    log(f"Size: \(genWidth)x\(genHeight), \(params.numFrames) frames")
-    log(f"Seed: \(seed)")
+    log(f"Size: {gen_width}x{gen_height}, {num_frames} frames")
+    log(f"Seed: {seed}")
     
     # Build CLI args for mlx_video.generate_av module
-    # Note: mlx_video.generate_av uses --enhance-prompt/--temperature
-    # instead of --repetition-penalty/--top-p
     cmd = [
         sys.executable, "-m", "mlx_video.generate_av",
         "--prompt", prompt,
-        "--height", str(\(genHeight)),
-        "--width", str(\(genWidth)),
-        "--num-frames", str(\(params.numFrames)),
-        "--seed", str(\(seed)),
-        "--fps", str(\(params.fps)),
-        "--output-path", "\(outputPath)",
+        "--height", str(gen_height),
+        "--width", str(gen_width),
+        "--num-frames", str(num_frames),
+        "--seed", str(seed),
+        "--fps", str(fps),
+        "--output-path", output_path,
         "--model-repo", model_repo,
-        "--tiling", "\(params.vaeTilingMode)",
+        "--tiling", vae_tiling,
     ]
     
     # Add --enhance-prompt only when enabled in Settings
-    enable_enhancement = \(enableGemmaPromptEnhancement ? "True" : "False")
     if enable_enhancement:
         cmd.append("--enhance-prompt")
         cmd.append("--use-uncensored-enhancer")
-        cmd.extend(["--temperature", str(\(request.gemmaTopP))])
+        cmd.extend(["--temperature", str(top_p)])
         # Pre-flight: copy bundled prompts into mlx_video if missing (pip package omits them)
         try:
             from pathlib import Path
             import shutil
-            resources_path = Path("\(resourcesPath)")
-            bundled_prompts = resources_path / "prompts"
+            bundled_prompts = Path(resources_path) / "prompts"
             import mlx_video.models.ltx.text_encoder as te
             target_dir = Path(te.__file__).parent / "prompts"
             for name in ["gemma_t2v_system_prompt.txt", "gemma_i2v_system_prompt.txt"]:
@@ -229,15 +250,14 @@ try:
     # Add image conditioning if provided
     if source_image_path:
         cmd.extend(["--image", source_image_path])
-        cmd.extend(["--image-strength", str(\(params.imageStrength))])
+        cmd.extend(["--image-strength", str(image_strength)])
         log(f"Image conditioning: {source_image_path}")
     
     # Disable audio if requested
-    disable_audio = \(request.disableAudio ? "True" : "False")
     if disable_audio:
         cmd.append("--no-audio")
         log("Audio generation disabled")
-    elif \(saveAudioTrackSeparately ? "True" : "False"):
+    elif save_audio_separately:
         cmd.append("--save-audio-separately")
         log("Saving audio track separately")
     
@@ -265,15 +285,16 @@ try:
     if process.returncode != 0:
         raise RuntimeError(f"mlx_video.generate_av failed with code {process.returncode}")
     
-    log(f"Video with audio saved to: \(outputPath)")
+    log(f"Video with audio saved to: {output_path}")
     log("Generation complete!")
     log_file.close()
-    print(json.dumps({"video_path": "\(outputPath)", "seed": \(seed), "mode": mode, "has_audio": not disable_audio}))
+    print(json.dumps({"video_path": output_path, "seed": seed, "mode": mode, "has_audio": not disable_audio}))
 except Exception as e:
     log(f"ERROR: {e}")
     import traceback
     log(traceback.format_exc())
-    log_file.close()
+    if 'log_file' in locals() and not log_file.closed:
+        log_file.close()
     sys.exit(1)
 """
         
@@ -283,7 +304,7 @@ except Exception as e:
         let enhancedPromptLock = NSLock()
         var capturedEnhancedPrompt: String? = nil
         
-        let output = try await runPython(script: script, timeout: 3600) { stderr in
+        let output = try await runPython(script: script, extraEnv: pythonEnv, timeout: 3600) { stderr in
             // Capture enhanced prompt from stderr
             // Our generate.py emits "ENHANCED_PROMPT:..." and mlx_video may emit "Enhanced prompt: ..."
             for line in stderr.components(separatedBy: "\n") {
@@ -501,6 +522,7 @@ except Exception as e:
 
     private func runPython(
         script: String,
+        extraEnv: [String: String] = [:],
         timeout: TimeInterval = 60,
         stderrHandler: ((String) -> Void)? = nil
     ) async throws -> String {
@@ -530,6 +552,11 @@ except Exception as e:
                     env["MTL_DEVICE_WRAPPER_TYPE"] = metalDevice
                 }
                 
+                // Merge extra environment variables
+                for (key, value) in extraEnv {
+                    env[key] = value
+                }
+
                 process.environment = env
                 
                 let stdoutPipe = Pipe()
