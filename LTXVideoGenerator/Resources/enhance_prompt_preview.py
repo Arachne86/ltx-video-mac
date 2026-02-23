@@ -67,7 +67,7 @@ def _clean_response(response: str) -> str:
     """Clean up the generated response."""
     response = response.strip()
     response = re.sub(r"^[^\w\s]+", "", response)
-    return response
+    return response.strip()
 
 
 def _enhance_with_mlx_lm(
