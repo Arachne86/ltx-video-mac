@@ -509,18 +509,26 @@ def generate_video_with_audio_lora(
     )
     mx.eval(upsampler.parameters())
 
+    vae_model_path = (
+        str(hf_model_path / "ltx-2-19b-distilled.safetensors")
+        if not use_unified
+        else str(model_path)
+    )
+
     vae_decoder = load_vae_decoder(
-        (
-            str(hf_model_path / "ltx-2-19b-distilled.safetensors")
-            if not use_unified
-            else str(model_path)
-        ),
+        vae_model_path,
         timestep_conditioning=None,
         use_unified=use_unified,
     )
 
+    # Optimization: Extract stats and unload VAE decoder to save VRAM during Stage 2
+    latents_mean = vae_decoder.latents_mean
+    latents_std = vae_decoder.latents_std
+    del vae_decoder
+    mx.clear_cache()
+
     video_latents = upsample_latents(
-        video_latents, upsampler, vae_decoder.latents_mean, vae_decoder.latents_std
+        video_latents, upsampler, latents_mean, latents_std
     )
     mx.eval(video_latents)
 
@@ -595,6 +603,14 @@ def generate_video_with_audio_lora(
     # Decode video with tiling
     print(f"{Colors.BLUE}🎞️  Decoding video...{Colors.RESET}")
 
+    # Reload VAE decoder for decoding
+    print(f"{Colors.BLUE}🎞️  Reloading VAE decoder...{Colors.RESET}")
+    vae_decoder = load_vae_decoder(
+        vae_model_path,
+        timestep_conditioning=None,
+        use_unified=use_unified,
+    )
+
     if tiling == "none":
         tiling_config = None
     elif tiling == "auto":
@@ -620,6 +636,10 @@ def generate_video_with_audio_lora(
         video = vae_decoder(video_latents)
     mx.eval(video)
 
+    # Unload VAE decoder immediately to save memory
+    del vae_decoder
+    mx.clear_cache()
+
     video = mx.squeeze(video, axis=0)
     video = mx.transpose(video, (1, 2, 3, 0))
     video = mx.clip((video + 1.0) / 2.0, 0.0, 1.0)
@@ -642,7 +662,7 @@ def generate_video_with_audio_lora(
     if audio_np.ndim == 3:
         audio_np = audio_np[0]
 
-    del audio_decoder, vocoder, vae_decoder
+    del audio_decoder, vocoder
     mx.clear_cache()
 
     output_path = Path(output_path)
