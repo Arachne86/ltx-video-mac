@@ -519,12 +519,18 @@ def generate_video_with_audio_lora(
         use_unified=use_unified,
     )
 
+    # Optimization: Extract stats and unload VAE decoder to save VRAM during Stage 2
+    latents_mean = vae_decoder.latents_mean
+    latents_std = vae_decoder.latents_std
+    mx.eval(latents_mean, latents_std)
+
     video_latents = upsample_latents(
-        video_latents, upsampler, vae_decoder.latents_mean, vae_decoder.latents_std
+        video_latents, upsampler, latents_mean, latents_std
     )
     mx.eval(video_latents)
 
     del upsampler
+    del vae_decoder
     mx.clear_cache()
 
     # Stage 2: Refine at full resolution
@@ -591,6 +597,18 @@ def generate_video_with_audio_lora(
 
     del transformer
     mx.clear_cache()
+
+    # Reload VAE decoder for final decoding
+    print(f"{Colors.BLUE}🔄 Reloading VAE decoder...{Colors.RESET}")
+    vae_decoder = load_vae_decoder(
+        (
+            str(hf_model_path / "ltx-2-19b-distilled.safetensors")
+            if not use_unified
+            else str(model_path)
+        ),
+        timestep_conditioning=None,
+        use_unified=use_unified,
+    )
 
     # Decode video with tiling
     print(f"{Colors.BLUE}🎞️  Decoding video...{Colors.RESET}")
