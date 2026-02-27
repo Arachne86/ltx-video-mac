@@ -509,12 +509,14 @@ def generate_video_with_audio_lora(
     )
     mx.eval(upsampler.parameters())
 
+    vae_model_path = (
+        str(hf_model_path / "ltx-2-19b-distilled.safetensors")
+        if not use_unified
+        else str(model_path)
+    )
+
     vae_decoder = load_vae_decoder(
-        (
-            str(hf_model_path / "ltx-2-19b-distilled.safetensors")
-            if not use_unified
-            else str(model_path)
-        ),
+        vae_model_path,
         timestep_conditioning=None,
         use_unified=use_unified,
     )
@@ -525,7 +527,9 @@ def generate_video_with_audio_lora(
     mx.eval(video_latents)
 
     del upsampler
+    del vae_decoder
     mx.clear_cache()
+    print(f"{Colors.DIM}🗑️ Unloaded VAE decoder to save VRAM{Colors.RESET}")
 
     # Stage 2: Refine at full resolution
     print(
@@ -593,6 +597,14 @@ def generate_video_with_audio_lora(
     mx.clear_cache()
 
     # Decode video with tiling
+    print(f"{Colors.BLUE}♻️ Reloading VAE decoder...{Colors.RESET}")
+    vae_decoder = load_vae_decoder(
+        vae_model_path,
+        timestep_conditioning=None,
+        use_unified=use_unified,
+    )
+    mx.eval(vae_decoder.parameters())
+
     print(f"{Colors.BLUE}🎞️  Decoding video...{Colors.RESET}")
 
     if tiling == "none":
