@@ -435,6 +435,7 @@ class LTXBridge {
                 
                 var stderrAccumulated = ""
                 let stderrLock = NSLock()
+                let logLock = NSLock()
                 
                 // Ensure log file exists and open it once
                 if !FileManager.default.fileExists(atPath: logFile) {
@@ -457,7 +458,9 @@ class LTXBridge {
                         stderrLock.unlock()
                         
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
+                            logLock.lock()
                             try? logHandle?.write(contentsOf: logData)
+                            logLock.unlock()
                         }
                         
                         stderrHandler?(accumulated)
@@ -467,7 +470,9 @@ class LTXBridge {
                 do {
                     let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nTime: \(Date())\n"
                     if let data = startLog.data(using: .utf8) {
+                        logLock.lock()
                         try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
                     }
                     
                     try process.run()
@@ -480,7 +485,9 @@ class LTXBridge {
                     
                     let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
                     if let data = outputLog.data(using: .utf8) {
+                        logLock.lock()
                         try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
                     }
                     
                     let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -510,7 +517,9 @@ class LTXBridge {
                 } catch {
                     let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
                     if let data = errorLog.data(using: .utf8) {
+                        logLock.lock()
                         try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
                     }
                     continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
                 }
@@ -561,6 +570,19 @@ class LTXBridge {
 
                 var stderrAccumulated = ""
                 let stderrLock = NSLock()
+                let logLock = NSLock()
+
+                // Ensure log file exists and open it once
+                if !FileManager.default.fileExists(atPath: logFile) {
+                    try? "".write(to: URL(fileURLWithPath: logFile), atomically: true, encoding: .utf8)
+                }
+
+                let logHandle = FileHandle(forWritingAtPath: logFile)
+                try? logHandle?.seekToEnd()
+
+                defer {
+                    try? logHandle?.close()
+                }
 
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
@@ -571,15 +593,9 @@ class LTXBridge {
                         stderrLock.unlock()
 
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
-                            if FileManager.default.fileExists(atPath: logFile) {
-                                if let handle = FileHandle(forWritingAtPath: logFile) {
-                                    handle.seekToEndOfFile()
-                                    handle.write(logData)
-                                    handle.closeFile()
-                                }
-                            } else {
-                                try? logData.write(to: URL(fileURLWithPath: logFile))
-                            }
+                            logLock.lock()
+                            try? logHandle?.write(contentsOf: logData)
+                            logLock.unlock()
                         }
 
                         stderrHandler?(accumulated)
@@ -588,7 +604,11 @@ class LTXBridge {
 
                 do {
                     let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nFile: \(path)\nTime: \(Date())\n"
-                    try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
+                    if let data = startLog.data(using: .utf8) {
+                        logLock.lock()
+                        try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
+                    }
 
                     try process.run()
                     process.waitUntilExit()
@@ -599,10 +619,10 @@ class LTXBridge {
                     let output = String(data: outputData, encoding: .utf8) ?? ""
 
                     let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(outputLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let data = outputLog.data(using: .utf8) {
+                        logLock.lock()
+                        try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
                     }
 
                     let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -631,10 +651,10 @@ class LTXBridge {
                     }
                 } catch {
                     let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(errorLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let data = errorLog.data(using: .utf8) {
+                        logLock.lock()
+                        try? logHandle?.write(contentsOf: data)
+                        logLock.unlock()
                     }
                     continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
                 }

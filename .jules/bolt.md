@@ -1,0 +1,3 @@
+## 2024-05-23 - Performance Bottleneck in High-Frequency Stderr Logging
+**Learning:** Creating new `FileHandle` instances continuously inside a background thread's `readabilityHandler` to log high-frequency stderr output (like `tqdm` progress updates from Python subprocesses) causes massive I/O overhead and performance bottlenecks. Opening, seeking, and closing files many times per second is extremely slow.
+**Action:** When capturing process streams that emit high-frequency output, open a single `FileHandle` before starting the process, use thread synchronization (`NSLock`) if writing from multiple sources, and ensure you use modern APIs like `.write(contentsOf:)` and `.close()` in a `defer` block.
