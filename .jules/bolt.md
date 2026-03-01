@@ -1,0 +1,3 @@
+## 2024-05-18 - Optimized File I/O in LTXBridge
+**Learning:** High-frequency file I/O within stdout/stderr read blocks significantly impacts performance. Opening, seeking, and closing file handles per chunk of stderr in a `Process` `readabilityHandler` creates a massive volume of unnecessary syscalls.
+**Action:** When streaming process output to a file, open the `FileHandle` once before process execution and close it in a `defer` block. Protect write operations with a lock if they might occur concurrently from different threads (e.g. `readabilityHandler` callback and main execution thread).
