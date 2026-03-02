@@ -236,12 +236,27 @@ struct HistoryThumbnailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
+            // ⚡ Bolt: Replaced synchronous NSImage(contentsOf:) with AsyncImage to prevent
+            // blocking the main thread during fast scrolling of the history grid.
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                if let thumbnailURL = result.thumbnailURL {
+                    AsyncImage(url: thumbnailURL) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } else if phase.error != nil {
+                            Rectangle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            Rectangle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                            ProgressView()
+                        }
+                    }
                 } else {
                     Rectangle()
                         .fill(Color(nsColor: .controlBackgroundColor))
