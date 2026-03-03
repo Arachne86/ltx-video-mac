@@ -237,11 +237,30 @@ struct HistoryThumbnailView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                if let thumbnailURL = result.thumbnailURL {
+                    // ⚡ Bolt Optimization: Use AsyncImage instead of synchronous NSImage(contentsOf:)
+                    // This prevents disk I/O from blocking the main thread during scrolling
+                    AsyncImage(url: thumbnailURL) { phase in
+                        switch phase {
+                        case .empty:
+                            Rectangle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            ZStack {
+                                Rectangle()
+                                    .fill(Color(nsColor: .controlBackgroundColor))
+                                Image(systemName: "film")
+                                    .font(.title)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
                 } else {
                     Rectangle()
                         .fill(Color(nsColor: .controlBackgroundColor))
