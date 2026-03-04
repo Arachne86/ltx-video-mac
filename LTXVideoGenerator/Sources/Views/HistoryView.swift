@@ -237,11 +237,33 @@ struct HistoryThumbnailView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
+                if let thumbnailURL = result.thumbnailURL {
+                    // Bolt: Performance Optimization ⚡
+                    // Replacing synchronous NSImage(contentsOf:) with AsyncImage to avoid main thread disk I/O.
+                    // This prevents frame drops and UI stuttering when scrolling through a large video history list.
+                    AsyncImage(url: thumbnailURL) { phase in
+                        switch phase {
+                        case .empty:
+                            Rectangle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                                .overlay {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                }
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        case .failure:
+                            Rectangle()
+                                .fill(Color(nsColor: .controlBackgroundColor))
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title)
+                                .foregroundStyle(.tertiary)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
                 } else {
                     Rectangle()
                         .fill(Color(nsColor: .controlBackgroundColor))
