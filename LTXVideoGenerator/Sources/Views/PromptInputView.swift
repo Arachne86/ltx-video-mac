@@ -735,28 +735,36 @@ struct PromptInputView: View {
         }
     }
     
+    // ⚡ Bolt: Offload image loading and resizing to background thread to prevent UI freeze
     private func loadThumbnail(from url: URL) {
-        if let image = NSImage(contentsOf: url) {
-            // Create a smaller thumbnail for display
-            let maxSize: CGFloat = 160
-            let aspectRatio = image.size.width / image.size.height
+        Task {
+            let processedThumbnail = await Task.detached(priority: .userInitiated) { () -> NSImage? in
+                guard let image = NSImage(contentsOf: url) else { return nil } // Synchronous disk I/O off main thread
+                // Create a smaller thumbnail for display
+                let maxSize: CGFloat = 160
+                let aspectRatio = image.size.width / image.size.height
+
+                let thumbnailSize: NSSize
+                if aspectRatio > 1 {
+                    thumbnailSize = NSSize(width: maxSize, height: maxSize / aspectRatio)
+                } else {
+                    thumbnailSize = NSSize(width: maxSize * aspectRatio, height: maxSize)
+                }
+
+                let thumbnail = NSImage(size: thumbnailSize)
+                thumbnail.lockFocus()
+                image.draw(in: NSRect(origin: .zero, size: thumbnailSize),
+                          from: NSRect(origin: .zero, size: image.size),
+                          operation: .copy,
+                          fraction: 1.0)
+                thumbnail.unlockFocus()
+
+                return thumbnail
+            }.value
             
-            let thumbnailSize: NSSize
-            if aspectRatio > 1 {
-                thumbnailSize = NSSize(width: maxSize, height: maxSize / aspectRatio)
-            } else {
-                thumbnailSize = NSSize(width: maxSize * aspectRatio, height: maxSize)
+            await MainActor.run {
+                self.sourceImageThumbnail = processedThumbnail
             }
-            
-            let thumbnail = NSImage(size: thumbnailSize)
-            thumbnail.lockFocus()
-            image.draw(in: NSRect(origin: .zero, size: thumbnailSize),
-                      from: NSRect(origin: .zero, size: image.size),
-                      operation: .copy,
-                      fraction: 1.0)
-            thumbnail.unlockFocus()
-            
-            sourceImageThumbnail = thumbnail
         }
     }
     
