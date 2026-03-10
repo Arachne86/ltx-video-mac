@@ -233,12 +233,13 @@ struct HistoryThumbnailView: View {
     let result: GenerationResult
     let isSelected: Bool
     
+    @State private var thumbnailImage: NSImage?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
+                if let image = thumbnailImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -251,6 +252,22 @@ struct HistoryThumbnailView: View {
                 }
             }
             .frame(height: 120)
+            .task(id: result.thumbnailURL) {
+                // Optimization: Load image asynchronously to prevent blocking the UI thread during scrolling
+                guard let url = result.thumbnailURL else { return }
+
+                await MainActor.run {
+                    self.thumbnailImage = nil
+                }
+
+                let loadedImage = await Task.detached(priority: .background) {
+                    return NSImage(contentsOf: url)
+                }.value
+
+                await MainActor.run {
+                    self.thumbnailImage = loadedImage
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
