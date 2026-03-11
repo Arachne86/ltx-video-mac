@@ -404,7 +404,7 @@ class LTXBridge {
             throw LTXError.pythonNotConfigured
         }
         
-        let logFile = "/tmp/ltx_generation.log"
+        let logFile = FileManager.default.temporaryDirectory.appendingPathComponent("ltx_generation.log").path
         
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -502,7 +502,7 @@ class LTXBridge {
                         if !trimmedOutput.isEmpty && isOnlyHarmless {
                             continuation.resume(returning: trimmedOutput)
                         } else {
-                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check /tmp/ltx_generation.log"))
+                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check \(logFile)"))
                         }
                     } else {
                         continuation.resume(returning: trimmedOutput)
@@ -528,7 +528,7 @@ class LTXBridge {
             throw LTXError.pythonNotConfigured
         }
 
-        let logFile = "/tmp/ltx_generation.log"
+        let logFile = FileManager.default.temporaryDirectory.appendingPathComponent("ltx_generation.log").path
 
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -562,6 +562,18 @@ class LTXBridge {
                 var stderrAccumulated = ""
                 let stderrLock = NSLock()
 
+                // Ensure log file exists and open it once
+                if !FileManager.default.fileExists(atPath: logFile) {
+                    try? "".write(to: URL(fileURLWithPath: logFile), atomically: true, encoding: .utf8)
+                }
+
+                let logHandle = FileHandle(forWritingAtPath: logFile)
+                try? logHandle?.seekToEnd()
+
+                defer {
+                    try? logHandle?.close()
+                }
+
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
@@ -571,15 +583,7 @@ class LTXBridge {
                         stderrLock.unlock()
 
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
-                            if FileManager.default.fileExists(atPath: logFile) {
-                                if let handle = FileHandle(forWritingAtPath: logFile) {
-                                    handle.seekToEndOfFile()
-                                    handle.write(logData)
-                                    handle.closeFile()
-                                }
-                            } else {
-                                try? logData.write(to: URL(fileURLWithPath: logFile))
-                            }
+                            try? logHandle?.write(contentsOf: logData)
                         }
 
                         stderrHandler?(accumulated)
@@ -588,7 +592,9 @@ class LTXBridge {
 
                 do {
                     let startLog = "=== LTX MLX Process Started ===\nPython: \(python)\nFile: \(path)\nTime: \(Date())\n"
-                    try? startLog.write(toFile: logFile, atomically: false, encoding: .utf8)
+                    if let data = startLog.data(using: .utf8) {
+                        try? logHandle?.write(contentsOf: data)
+                    }
 
                     try process.run()
                     process.waitUntilExit()
@@ -599,10 +605,8 @@ class LTXBridge {
                     let output = String(data: outputData, encoding: .utf8) ?? ""
 
                     let outputLog = "\n[STDOUT] \(output)\n[EXIT CODE] \(process.terminationStatus)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(outputLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let data = outputLog.data(using: .utf8) {
+                        try? logHandle?.write(contentsOf: data)
                     }
 
                     let trimmedOutput = output.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -624,17 +628,15 @@ class LTXBridge {
                         if !trimmedOutput.isEmpty && isOnlyHarmless {
                             continuation.resume(returning: trimmedOutput)
                         } else {
-                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check /tmp/ltx_generation.log"))
+                            continuation.resume(throwing: LTXError.generationFailed("Exit code \(process.terminationStatus). Check \(logFile)"))
                         }
                     } else {
                         continuation.resume(returning: trimmedOutput)
                     }
                 } catch {
                     let errorLog = "\n[ERROR] \(error.localizedDescription)\n"
-                    if let handle = FileHandle(forWritingAtPath: logFile) {
-                        handle.seekToEndOfFile()
-                        handle.write(errorLog.data(using: .utf8)!)
-                        handle.closeFile()
+                    if let data = errorLog.data(using: .utf8) {
+                        try? logHandle?.write(contentsOf: data)
                     }
                     continuation.resume(throwing: LTXError.generationFailed(error.localizedDescription))
                 }
