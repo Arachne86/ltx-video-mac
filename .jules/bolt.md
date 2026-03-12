@@ -1,0 +1,3 @@
+## 2024-05-15 - [Computed Properties vs Static Constants for Static Data]
+**Learning:** In SwiftUI, `ForEach` loops render on the main thread and can be triggered frequently (e.g. state changes). A computed static property like `static var groupedByCategory: [(category: String, genres: [MusicGenre])] { ... }` that filters `allCases` of an Enum will be executed every single time the view requires it.
+**Action:** Use `static let groupedByCategory: [(category: String, genres: [MusicGenre])] = { ... }()` to evaluate the array once and store it statically in memory, avoiding O(N * M) repeated computations on every render pass.
