@@ -7,7 +7,7 @@ enum AudioError: LocalizedError, Equatable {
     case mlxAudioFailed(String)
     case ffmpegFailed(String)
     case pythonNotConfigured
-    
+
     var errorDescription: String? {
         switch self {
         case .elevenLabsKeyNotSet:
@@ -27,16 +27,16 @@ enum AudioError: LocalizedError, Equatable {
 enum AudioSource: String, CaseIterable, Identifiable {
     case elevenLabs = "elevenlabs"
     case mlxAudio = "mlx-audio"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .elevenLabs: return "ElevenLabs (Cloud)"
         case .mlxAudio: return "MLX Audio (Local)"
         }
     }
-    
+
     var description: String {
         switch self {
         case .elevenLabs: return "High-quality cloud TTS, requires API key"
@@ -49,13 +49,13 @@ struct ElevenLabsVoice: Identifiable, Codable {
     let voice_id: String
     let name: String
     let accent: String
-    
+
     var id: String { voice_id }
-    
+
     var displayName: String {
         "\(name) (\(accent))"
     }
-    
+
     static let defaultVoices: [ElevenLabsVoice] = [
         // American voices
         ElevenLabsVoice(voice_id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", accent: "US Female"),
@@ -88,18 +88,18 @@ enum ElevenLabsFormattingHelp {
     • ... - Ellipsis adds hesitation
     • CAPS - Adds emphasis
     • "quotes" - Slightly different delivery
-    
+
     Example:
     "Welcome to the show. <break time="1s" /> Today... we explore the unknown."
     """
-    
+
     static let shortTip = "Use <break time=\"1s\" /> for pauses, ... for hesitation, CAPS for emphasis"
 }
 
 struct MLXAudioVoice: Identifiable {
     let id: String
     let name: String
-    
+
     // Kokoro model voice presets
     static let defaultVoices: [MLXAudioVoice] = [
         // American English Female
@@ -131,7 +131,7 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     case electronicSynthwave = "electronic_synthwave"
     case electronicDrumAndBass = "electronic_dnb"
     case electronicTrance = "electronic_trance"
-    
+
     // Hip-Hop/R&B
     case hiphopTrap = "hiphop_trap"
     case hiphopLofi = "hiphop_lofi"
@@ -139,7 +139,7 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     case rnbSlow = "rnb_slow"
     case rnbModern = "rnb_modern"
     case rnbSoul = "rnb_soul"
-    
+
     // Rock
     case rockClassic = "rock_classic"
     case rockAlternative = "rock_alternative"
@@ -147,20 +147,20 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     case rockMetal = "rock_metal"
     case rockPunk = "rock_punk"
     case rockAcoustic = "rock_acoustic"
-    
+
     // Pop
     case popModern = "pop_modern"
     case popIndie = "pop_indie"
     case popDance = "pop_dance"
     case popAcoustic = "pop_acoustic"
-    
+
     // Jazz/Blues
     case jazzSmooth = "jazz_smooth"
     case jazzBebop = "jazz_bebop"
     case jazzLounge = "jazz_lounge"
     case bluesElectric = "blues_electric"
     case bluesAcoustic = "blues_acoustic"
-    
+
     // Classical/Orchestral
     case classicalOrchestral = "classical_orchestral"
     case classicalPiano = "classical_piano"
@@ -168,20 +168,20 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     case cinematicEpic = "cinematic_epic"
     case cinematicTense = "cinematic_tense"
     case cinematicUplifting = "cinematic_uplifting"
-    
+
     // World
     case worldLatin = "world_latin"
     case worldReggae = "world_reggae"
     case worldAfrobeat = "world_afrobeat"
     case worldMiddleEastern = "world_middle_eastern"
     case worldAsian = "world_asian"
-    
+
     // Country/Folk
     case countryModern = "country_modern"
     case countryClassic = "country_classic"
     case folkAcoustic = "folk_acoustic"
     case folkIndie = "folk_indie"
-    
+
     // Functional/Background
     case functionalCorporate = "functional_corporate"
     case functionalMotivational = "functional_motivational"
@@ -193,9 +193,9 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     case functionalSad = "functional_sad"
     case functionalDramatic = "functional_dramatic"
     case functionalMystery = "functional_mystery"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         // Electronic
@@ -263,7 +263,7 @@ enum MusicGenre: String, CaseIterable, Identifiable {
         case .functionalMystery: return "Mysterious"
         }
     }
-    
+
     var category: String {
         switch self {
         case .electronicEDM, .electronicHouse, .electronicTechno, .electronicAmbient,
@@ -290,7 +290,7 @@ enum MusicGenre: String, CaseIterable, Identifiable {
             return "Functional / Mood"
         }
     }
-    
+
     /// ElevenLabs Music API prompt for this genre
     var prompt: String {
         switch self {
@@ -413,11 +413,10 @@ enum MusicGenre: String, CaseIterable, Identifiable {
             return "Mysterious music with enigmatic melodies, subtle tension, and intriguing atmosphere. Curious and thought-provoking."
         }
     }
-    
+
     /// Grouped genres by category for picker UI
-    // ⚡ Bolt: Cached grouped genres using a static let to prevent O(N) re-filtering on every UI render pass
     static let groupedByCategory: [(category: String, genres: [MusicGenre])] = {
-        let categories = ["Electronic", "Hip-Hop / R&B", "Rock", "Pop", "Jazz / Blues", 
+        let categories = ["Electronic", "Hip-Hop / R&B", "Rock", "Pop", "Jazz / Blues",
                          "Classical / Cinematic", "World", "Country / Folk", "Functional / Mood"]
         return categories.map { cat in
             (category: cat, genres: MusicGenre.allCases.filter { $0.category == cat })
@@ -428,24 +427,24 @@ enum MusicGenre: String, CaseIterable, Identifiable {
 @MainActor
 class AudioService: ObservableObject {
     static let shared = AudioService()
-    
+
     @Published var isGenerating = false
     @Published var progress: Double = 0
     @Published var statusMessage: String = ""
     @Published var error: AudioError?
-    
+
     private init() {}
-    
+
     // MARK: - ElevenLabs
-    
+
     var elevenLabsApiKey: String {
         UserDefaults.standard.string(forKey: "elevenLabsApiKey") ?? ""
     }
-    
+
     var isElevenLabsConfigured: Bool {
         !elevenLabsApiKey.isEmpty
     }
-    
+
     func generateWithElevenLabs(
         text: String,
         voiceId: String,
@@ -455,15 +454,15 @@ class AudioService: ObservableObject {
         guard isElevenLabsConfigured else {
             throw AudioError.elevenLabsKeyNotSet
         }
-        
+
         progressHandler(0.1, "Connecting to ElevenLabs...")
-        
+
         let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceId)")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(elevenLabsApiKey, forHTTPHeaderField: "xi-api-key")
-        
+
         let body: [String: Any] = [
             "text": text,
             "model_id": "eleven_monolingual_v1",
@@ -472,34 +471,34 @@ class AudioService: ObservableObject {
                 "similarity_boost": 0.75
             ]
         ]
-        
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
+
         progressHandler(0.3, "Generating audio...")
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AudioError.elevenLabsApiFailed("Invalid response")
         }
-        
+
         if httpResponse.statusCode != 200 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw AudioError.elevenLabsApiFailed("Status \(httpResponse.statusCode): \(errorMessage)")
         }
-        
+
         progressHandler(0.8, "Saving audio file...")
-        
+
         let outputURL = URL(fileURLWithPath: outputPath)
         try data.write(to: outputURL)
-        
+
         progressHandler(1.0, "Audio generated")
-        
+
         return outputURL
     }
-    
+
     // MARK: - ElevenLabs Music
-    
+
     func generateMusic(
         genre: MusicGenre,
         durationMs: Int,
@@ -509,56 +508,56 @@ class AudioService: ObservableObject {
         guard isElevenLabsConfigured else {
             throw AudioError.elevenLabsKeyNotSet
         }
-        
+
         progressHandler(0.05, "Connecting to ElevenLabs Music...")
-        
+
         let url = URL(string: "https://api.elevenlabs.io/v1/music")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(elevenLabsApiKey, forHTTPHeaderField: "xi-api-key")
-        
+
         // Build the music prompt with instrumental-only instruction
         let musicPrompt = "\(genre.prompt) Instrumental only, no vocals."
-        
+
         let body: [String: Any] = [
             "prompt": musicPrompt,
             "music_length_ms": durationMs
         ]
-        
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
+
         progressHandler(0.1, "Generating \(genre.displayName) music...")
-        
+
         // Music generation can take longer, so we use a longer timeout
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 300 // 5 minutes
         config.timeoutIntervalForResource = 600 // 10 minutes
         let session = URLSession(configuration: config)
-        
+
         let (data, response) = try await session.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AudioError.elevenLabsApiFailed("Invalid response from Music API")
         }
-        
+
         if httpResponse.statusCode != 200 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw AudioError.elevenLabsApiFailed("Music API status \(httpResponse.statusCode): \(errorMessage)")
         }
-        
+
         progressHandler(0.9, "Saving music file...")
-        
+
         let outputURL = URL(fileURLWithPath: outputPath)
         try data.write(to: outputURL)
-        
+
         progressHandler(1.0, "Music generated")
-        
+
         return outputURL
     }
-    
+
     // MARK: - MLX Audio
-    
+
     func generateWithMLXAudio(
         text: String,
         voice: String,
@@ -569,40 +568,40 @@ class AudioService: ObservableObject {
               !pythonPath.isEmpty else {
             throw AudioError.pythonNotConfigured
         }
-        
+
         progressHandler(0.1, "Starting MLX Audio generation...")
-        
+
         let resourcesPath = Bundle.main.bundlePath + "/Contents/Resources"
         let generatorScript = resourcesPath + "/audio_generator.py"
-        
+
         // Escape text for Python
         let escapedText = text
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
-        
+
         let script = """
         import sys
         import json
-        
+
         # Add Resources directory to path
         sys.path.insert(0, "\(resourcesPath)")
-        
+
         try:
             from audio_generator import generate_audio
-            
+
             result = generate_audio(
                 text="\(escapedText)",
                 voice="\(voice)",
                 output_path="\(outputPath)"
             )
-            
+
             print(json.dumps({"success": True, "audio_path": "\(outputPath)"}))
         except Exception as e:
             print(json.dumps({"success": False, "error": str(e)}), file=sys.stderr)
             sys.exit(1)
         """
-        
+
         let output = try await runPython(
             executable: pythonPath,
             script: script,
@@ -622,7 +621,7 @@ class AudioService: ObservableObject {
                 }
             }
         }
-        
+
         // Parse result
         if let data = output.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -630,12 +629,12 @@ class AudioService: ObservableObject {
             progressHandler(1.0, "Audio generated")
             return URL(fileURLWithPath: outputPath)
         }
-        
+
         throw AudioError.mlxAudioFailed("Failed to parse output: \(output)")
     }
-    
+
     // MARK: - FFmpeg Merge
-    
+
     func mergeAudioWithVideo(
         videoURL: URL,
         audioURL: URL,
@@ -658,9 +657,9 @@ class AudioService: ObservableObject {
             progressHandler: progressHandler
         )
     }
-    
+
     // MARK: - Full Pipeline
-    
+
     func addAudioToVideo(
         result: GenerationResult,
         text: String,
@@ -673,21 +672,21 @@ class AudioService: ObservableObject {
         progress = 0
         statusMessage = "Starting..."
         error = nil
-        
+
         defer {
             isGenerating = false
         }
-        
+
         // Generate audio file path - use same directory as the video
         let videoDirectory = result.videoURL.deletingLastPathComponent()
         let audioFileName = "\(result.id.uuidString)_audio"
         let audioExtension = source == .elevenLabs ? "mp3" : "wav"
         let audioPath = videoDirectory
             .appendingPathComponent("\(audioFileName).\(audioExtension)").path
-        
+
         // Generate audio
         progressHandler(0.1, "Generating audio...")
-        
+
         let audioURL: URL
         switch source {
         case .elevenLabs:
@@ -707,13 +706,13 @@ class AudioService: ObservableObject {
                 progressHandler(0.1 + pct * 0.4, msg)
             }
         }
-        
+
         // Merge with video
         progressHandler(0.5, "Merging audio with video...")
-        
+
         let outputFileName = "\(result.id.uuidString)_with_audio.mp4"
         let outputPath = videoDirectory.appendingPathComponent(outputFileName)
-        
+
         try await mergeAudioWithVideo(
             videoURL: result.videoURL,
             audioURL: audioURL,
@@ -721,10 +720,10 @@ class AudioService: ObservableObject {
         ) { pct, msg in
             progressHandler(0.5 + pct * 0.4, msg)
         }
-        
+
         // Update result with new video path (with audio)
         progressHandler(0.95, "Updating history...")
-        
+
         let updatedResult = GenerationResult(
             id: result.id,
             requestId: result.requestId,
@@ -745,17 +744,17 @@ class AudioService: ObservableObject {
             duration: result.duration,
             seed: result.seed
         )
-        
+
         // Clean up original video file (optional - keep backup)
         // try? FileManager.default.removeItem(at: result.videoURL)
-        
+
         progressHandler(1.0, "Complete!")
-        
+
         return updatedResult
     }
-    
+
     // MARK: - Video Duration Helper
-    
+
     /// Get the actual duration of a video file in milliseconds
     func getVideoDurationMs(url: URL) async -> Int? {
         let asset = AVAsset(url: url)
@@ -770,9 +769,9 @@ class AudioService: ObservableObject {
         }
         return nil
     }
-    
+
     // MARK: - Add Music to Video
-    
+
     func addMusicToVideo(
         result: GenerationResult,
         genre: MusicGenre,
@@ -783,11 +782,11 @@ class AudioService: ObservableObject {
         progress = 0
         statusMessage = "Starting music generation..."
         error = nil
-        
+
         defer {
             isGenerating = false
         }
-        
+
         // Get actual video duration from file
         progressHandler(0.05, "Analyzing video duration...")
         let fallbackDurationMs = Int((Double(result.parameters.numFrames) / Double(result.parameters.fps)) * 1000)
@@ -799,15 +798,15 @@ class AudioService: ObservableObject {
             durationMs = fallbackDurationMs
             print("Could not get video duration from file, using calculated: \(durationMs)ms")
         }
-        
+
         // Generate music file path - use same directory as the video
         let videoDirectory = result.videoURL.deletingLastPathComponent()
         let musicFileName = "\(result.id.uuidString)_music.mp3"
         let musicPath = videoDirectory.appendingPathComponent(musicFileName).path
-        
+
         // Generate music
         progressHandler(0.1, "Generating \(genre.displayName) music (\(durationMs / 1000)s)...")
-        
+
         let musicURL = try await generateMusic(
             genre: genre,
             durationMs: durationMs,
@@ -815,13 +814,13 @@ class AudioService: ObservableObject {
         ) { pct, msg in
             progressHandler(0.1 + pct * 0.4, msg)
         }
-        
+
         // Merge music with video
         progressHandler(0.5, "Merging music with video...")
-        
+
         let outputFileName = "\(result.id.uuidString)_with_music.mp4"
         let outputPath = videoDirectory.appendingPathComponent(outputFileName)
-        
+
         // Use different merge based on whether video has voiceover
         if result.hasAudio, let audioURL = result.audioURL {
             // Merge video + voiceover + music (with music ducked)
@@ -843,10 +842,10 @@ class AudioService: ObservableObject {
                 progressHandler(0.5 + pct * 0.4, msg)
             }
         }
-        
+
         // Update result with new video path and music info
         progressHandler(0.95, "Updating history...")
-        
+
         let updatedResult = GenerationResult(
             id: result.id,
             requestId: result.requestId,
@@ -867,14 +866,14 @@ class AudioService: ObservableObject {
             duration: result.duration,
             seed: result.seed
         )
-        
+
         progressHandler(1.0, "Complete!")
-        
+
         return updatedResult
     }
-    
+
     // MARK: - Music Merge (video + music only)
-    
+
     func mergeMusicWithVideo(
         videoURL: URL,
         musicURL: URL,
@@ -902,9 +901,9 @@ class AudioService: ObservableObject {
             progressHandler: progressHandler
         )
     }
-    
+
     // MARK: - Full Audio Merge (video + voiceover + music)
-    
+
     func mergeVideoWithVoiceoverAndMusic(
         videoURL: URL,
         voiceoverURL: URL,
@@ -945,42 +944,42 @@ class AudioService: ObservableObject {
         progressHandler: @escaping (Double, String) -> Void
     ) async throws {
         progressHandler(0.1, initialMessage)
-        
+
         let ffmpegPaths = [
             "/opt/homebrew/bin/ffmpeg",
             "/usr/local/bin/ffmpeg",
             "/usr/bin/ffmpeg"
         ]
-        
+
         guard let ffmpegPath = ffmpegPaths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
             throw AudioError.ffmpegFailed("FFmpeg not found. Install with: brew install ffmpeg")
         }
-        
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ffmpegPath)
         process.arguments = arguments
-        
+
         let stderrPipe = Pipe()
         process.standardError = stderrPipe
         process.standardOutput = Pipe()
-        
+
         try process.run()
-        
+
         progressHandler(0.5, processingMessage)
-        
+
         process.waitUntilExit()
-        
+
         if process.terminationStatus != 0 {
             let errorData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
             let errorOutput = String(data: errorData, encoding: .utf8) ?? "Unknown error"
             throw AudioError.ffmpegFailed(errorOutput)
         }
-        
+
         progressHandler(1.0, completionMessage)
     }
 
     // MARK: - Python Runner
-    
+
     private func runPython(
         executable: String,
         script: String,
@@ -992,7 +991,7 @@ class AudioService: ObservableObject {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: executable)
                 process.arguments = ["-c", script]
-                
+
                 var env: [String: String] = [:]
                 let pythonBin = URL(fileURLWithPath: executable).deletingLastPathComponent().path
                 env["PATH"] = "\(pythonBin):/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin"
@@ -1000,28 +999,28 @@ class AudioService: ObservableObject {
                 env["USER"] = ProcessInfo.processInfo.environment["USER"] ?? ""
                 env["TMPDIR"] = ProcessInfo.processInfo.environment["TMPDIR"] ?? "/tmp"
                 process.environment = env
-                
+
                 let stdoutPipe = Pipe()
                 let stderrPipe = Pipe()
                 process.standardOutput = stdoutPipe
                 process.standardError = stderrPipe
-                
+
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
                         stderrHandler?(str)
                     }
                 }
-                
+
                 do {
                     try process.run()
                     process.waitUntilExit()
-                    
+
                     stderrPipe.fileHandleForReading.readabilityHandler = nil
-                    
+
                     let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
                     let output = String(data: outputData, encoding: .utf8) ?? ""
-                    
+
                     if process.terminationStatus != 0 {
                         continuation.resume(throwing: AudioError.mlxAudioFailed("Process exited with code \(process.terminationStatus)"))
                     } else {
