@@ -1,0 +1,3 @@
+## 2024-05-24 - [Avoid re-evaluating static properties in SwiftUI]
+**Learning:** In SwiftUI macOS apps, using a computed static property (`static var`) for statically filtered lists accessed by `ForEach` loops causes them to re-evaluate on every UI render pass, significantly impacting UI performance and responsiveness.
+**Action:** Instead, use lazily-initialized static constants (`static let`) with a closure to compute and cache the result exactly once when the property is first accessed. When initializing a `static let` property using a closure, explicitly qualify the type's other static members (e.g., `MusicGenre.allCases` instead of just `allCases`).
