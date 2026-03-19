@@ -415,13 +415,16 @@ enum MusicGenre: String, CaseIterable, Identifiable {
     }
     
     /// Grouped genres by category for picker UI
-    static var groupedByCategory: [(category: String, genres: [MusicGenre])] {
+    // ⚡ Bolt: Converted from computed property (`static var`) to lazily-initialized constant (`static let`).
+    // This prevents O(N*M) re-evaluation of the map/filter operations on every SwiftUI render pass,
+    // caching the result exactly once for O(1) read performance.
+    static let groupedByCategory: [(category: String, genres: [MusicGenre])] = {
         let categories = ["Electronic", "Hip-Hop / R&B", "Rock", "Pop", "Jazz / Blues", 
                          "Classical / Cinematic", "World", "Country / Folk", "Functional / Mood"]
         return categories.map { cat in
-            (category: cat, genres: allCases.filter { $0.category == cat })
+            (category: cat, genres: MusicGenre.allCases.filter { $0.category == cat })
         }
-    }
+    }()
 }
 
 @MainActor
