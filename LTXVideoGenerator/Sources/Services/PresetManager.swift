@@ -8,6 +8,9 @@ class PresetManager: ObservableObject {
     
     private let presetsFile: URL
     
+    // ⚡ Bolt: Dedicated serial queue for preset file operations to ensure write order
+    private let ioQueue = DispatchQueue(label: "com.ltxvideogenerator.presets.io", qos: .background)
+
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupport.appendingPathComponent("LTXVideoGenerator", isDirectory: true)
@@ -46,12 +49,20 @@ class PresetManager: ObservableObject {
     private func savePresets() {
         // Only save custom presets
         let customPresets = presets.filter { !$0.isBuiltIn }
+        let file = presetsFile
         
-        do {
-            let data = try JSONEncoder().encode(customPresets)
-            try data.write(to: presetsFile)
-        } catch {
-            print("Failed to save presets: \(error)")
+        // ⚡ Bolt: Offload JSON encoding and file writing to a background queue
+        // Why: JSON encoding and disk I/O are synchronous operations that block the main thread.
+        // Impact: Prevents UI hitches when saving presets.
+        // ⚡ Bolt: Serialize writes on a custom queue to prevent data race corruption
+        ioQueue.async {
+            do {
+                let data = try JSONEncoder().encode(customPresets)
+                // ⚡ Bolt: Use atomic writing to prevent data corruption during partial writes
+                try data.write(to: file, options: .atomic)
+            } catch {
+                print("Failed to save presets: \(error)")
+            }
         }
     }
     
