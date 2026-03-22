@@ -11,6 +11,8 @@ class HistoryManager: ObservableObject {
     let thumbnailsDirectory: URL
     private let historyFile: URL
     
+    private let saveQueue = DispatchQueue(label: "com.ltxvideogenerator.history.save", qos: .utility)
+
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupport.appendingPathComponent("LTXVideoGenerator", isDirectory: true)
@@ -49,11 +51,18 @@ class HistoryManager: ObservableObject {
     }
     
     private func saveHistory() {
-        do {
-            let data = try JSONEncoder().encode(results)
-            try data.write(to: historyFile)
-        } catch {
-            print("Failed to save history: \(error)")
+        // Capture state synchronously on main thread
+        let currentResults = results
+        let fileURL = historyFile
+
+        // Dispatch disk I/O to background queue to prevent UI blocking
+        saveQueue.async {
+            do {
+                let data = try JSONEncoder().encode(currentResults)
+                try data.write(to: fileURL, options: .atomic)
+            } catch {
+                print("Failed to save history: \(error)")
+            }
         }
     }
     
