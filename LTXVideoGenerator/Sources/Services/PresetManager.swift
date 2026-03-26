@@ -7,6 +7,7 @@ class PresetManager: ObservableObject {
     @Published var selectedPreset: Preset?
     
     private let presetsFile: URL
+    private let ioQueue = DispatchQueue(label: "com.ltxvideogenerator.presets.io")
     
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -44,14 +45,17 @@ class PresetManager: ObservableObject {
     }
     
     private func savePresets() {
-        // Only save custom presets
+        // Capture state synchronously on main thread
         let customPresets = presets.filter { !$0.isBuiltIn }
+        let currentPresetsFile = presetsFile
         
-        do {
-            let data = try JSONEncoder().encode(customPresets)
-            try data.write(to: presetsFile)
-        } catch {
-            print("Failed to save presets: \(error)")
+        ioQueue.async {
+            do {
+                let data = try JSONEncoder().encode(customPresets)
+                try data.write(to: currentPresetsFile, options: .atomic)
+            } catch {
+                print("Failed to save presets: \(error)")
+            }
         }
     }
     
