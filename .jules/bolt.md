@@ -1,0 +1,3 @@
+## 2024-05-24 - File I/O Blocking Main Thread in ObservableObjects
+**Learning:** Synchronous file system operations (like JSON encoding and disk writing) inside `@MainActor` classes (like `HistoryManager` and `PresetManager`) block the main thread and can cause UI hitches.
+**Action:** Always offload these operations to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure write order, capturing the necessary state synchronously on the main thread before dispatching. Furthermore, use `.atomic` writing options to prevent file corruption during partial writes.
