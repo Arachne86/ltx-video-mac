@@ -1,0 +1,3 @@
+## 2024-03-30 - Optimize Computed Static Properties in SwiftUI State
+**Learning:** In SwiftUI, `static var` computed properties used for lists (like `MusicGenre.groupedByCategory`) re-evaluate on every render pass if accessed within `@State` or `ForEach`, causing hidden O(N) filtering overhead and unnecessary allocations.
+**Action:** Always convert statically filtered enum collections to lazy `static let ... = { ... }()` to compute and cache them exactly once at startup, especially when used in UI pickers. Ensure correct scope referencing (e.g., using `MusicGenre.allCases` inside the closure) since implicit `self` members aren't available during static initialization.
