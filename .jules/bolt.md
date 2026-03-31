@@ -1,0 +1,3 @@
+## 2024-03-31 - Optimize SwiftUI ForEach Static Collections
+**Learning:** Using computed static properties (`static var`) for statically filtered lists accessed by SwiftUI `ForEach` loops causes the collection to re-evaluate on every UI render pass, impacting performance. Additionally, when initializing a `static let` using a closure, the closure does not have implicit access to the type's other static members, so you must explicitly qualify them with the type name (e.g., `MusicGenre.allCases` instead of `allCases`).
+**Action:** Use lazily-initialized static constants (`static let`) with a closure to compute and cache the result exactly once for static lists used in SwiftUI rendering.
