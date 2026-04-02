@@ -1,0 +1,3 @@
+## 2024-06-18 - Caching Static Enum Properties in SwiftUI
+**Learning:** Computed `static var` properties that filter or map over `allCases` (like `MusicGenre.groupedByCategory`) are re-evaluated on every access. In SwiftUI, when used in a `ForEach` loop or inside a `Picker`, this causes redundant CPU overhead during every view render pass.
+**Action:** Convert purely static data mappings to lazy-initialized `static let` constants using a closure. This guarantees the filtering and grouping logic runs exactly once and caches the result for the lifecycle of the app, preventing unnecessary re-renders and CPU cycles.
