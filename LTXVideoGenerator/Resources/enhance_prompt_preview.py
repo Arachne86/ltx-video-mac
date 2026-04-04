@@ -33,18 +33,31 @@ SUSPECTED_FILTERED_WORDS = [
     "sexual",
 ]
 
+# Pre-compile a single alternation regex for fast single-pass sanitization.
+# Sort by length descending to match longest phrases first (e.g., "dead body" before "dead").
+_SORTED_FILTERED_WORDS = sorted(SUSPECTED_FILTERED_WORDS, key=len, reverse=True)
+_FILTER_PATTERN = re.compile(
+    r"\b(" + "|".join(map(re.escape, _SORTED_FILTERED_WORDS)) + r")\b",
+    re.IGNORECASE
+)
+_WORD_TO_INDEX = {w.lower(): i for i, w in enumerate(SUSPECTED_FILTERED_WORDS)}
+
 
 def _sanitize_prompt(prompt: str) -> tuple[str, dict[str, str]]:
     """Replace suspected filtered words with placeholders. Returns (sanitized, {placeholder: original})."""
     replacements: dict[str, str] = {}
-    result = prompt
-    for i, word in enumerate(SUSPECTED_FILTERED_WORDS):
-        pattern = re.compile(r"\b" + re.escape(word) + r"\b", re.I)
-        for m in reversed(list(pattern.finditer(result))):
-            ph = f"__X{i}__"
-            replacements[ph] = m.group()
-            result = result[: m.start()] + ph + result[m.end() :]
-    return result, replacements
+
+    def replacer(match: re.Match) -> str:
+        word = match.group(0)
+        # O(1) lookup using precomputed dictionary
+        idx = _WORD_TO_INDEX[word.lower()]
+        ph = f"__X{idx}__"
+        if ph not in replacements:
+            replacements[ph] = word
+        return ph
+
+    sanitized = _FILTER_PATTERN.sub(replacer, prompt)
+    return sanitized, replacements
 
 
 def _merge_back(enhanced: str, replacements: dict[str, str]) -> str:
