@@ -1,0 +1,3 @@
+## 2024-05-18 - Swift static var vs static let in SwiftUI
+**Learning:** In Swift, computed properties like `static var groupedByCategory: [(category: String, genres: [MusicGenre])]` that map and filter arrays of enum cases will execute that map/filter loop on *every* access. In SwiftUI, where views re-render frequently, reading this computed property in a `ForEach` loop repeatedly triggers this O(N*M) calculation. Since enum cases and constant categories never change, this is pure waste.
+**Action:** Use a lazily-initialized static constant `static let property: Type = { ... }()`. The closure evaluates the expensive filter operation exactly once upon first access, caching the result in memory, transforming subsequent reads to O(1).
