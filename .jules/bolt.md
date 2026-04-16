@@ -1,0 +1,3 @@
+## 2024-06-25 - Fixing Main-Thread Blocking File Writes in `@MainActor` Classes
+**Learning:** In `@MainActor` classes like `HistoryManager` and `PresetManager`, using synchronous JSON encoding and file writing blocks the main thread, causing UI hitches. However, attempting to offload this via `Task.detached` introduces concurrency data races due to concurrent execution of sequential writes and capturing `self` in the async closure.
+**Action:** When offloading sequential background I/O operations from `@MainActor` classes, use a dedicated serial `DispatchQueue` instead of `Task.detached`. Always capture state synchronously as local variables on the main thread before dispatching to the queue to avoid strict concurrency warnings/errors.
