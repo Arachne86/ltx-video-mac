@@ -232,13 +232,15 @@ struct HistoryView: View {
 struct HistoryThumbnailView: View {
     let result: GenerationResult
     let isSelected: Bool
+
+    // ⚡ Bolt Optimization: State for async image loading
+    @State private var loadedImage: NSImage?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
+                if let image = loadedImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -252,6 +254,19 @@ struct HistoryThumbnailView: View {
             }
             .frame(height: 120)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .task(id: result.thumbnailURL) {
+                // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background task
+                // Impact: Eliminates main thread blocking and stuttering during history scrolling
+                if let url = result.thumbnailURL {
+                    let image = await Task.detached(priority: .background) {
+                        NSImage(contentsOf: url)
+                    }.value
+                    guard !Task.isCancelled else { return }
+                    loadedImage = image
+                } else {
+                    loadedImage = nil
+                }
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 3)
