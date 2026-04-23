@@ -233,12 +233,14 @@ struct HistoryThumbnailView: View {
     let result: GenerationResult
     let isSelected: Bool
     
+    // ⚡ Bolt Optimization: Offload synchronous disk I/O from main thread
+    @State private var thumbnailImage: NSImage?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
+                if let image = thumbnailImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -256,6 +258,19 @@ struct HistoryThumbnailView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 3)
             )
+            .task(id: result.thumbnailURL) {
+                guard let url = result.thumbnailURL else {
+                    thumbnailImage = nil
+                    return
+                }
+
+                // Perform disk I/O off the main thread to prevent UI blocking during scrolling
+                let loadedImage = await Task.detached(priority: .background) {
+                    return NSImage(contentsOf: url)
+                }.value
+
+                thumbnailImage = loadedImage
+            }
             
             // Info
             VStack(alignment: .leading, spacing: 2) {
