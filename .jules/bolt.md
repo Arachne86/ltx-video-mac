@@ -1,0 +1,3 @@
+## 2024-03-24 - [Avoid synchronous disk I/O in SwiftUI lists]
+**Learning:** Performing synchronous disk I/O like `NSImage(contentsOf:)` directly in the `body` of a SwiftUI view inside a scrollable list (like `HistoryView`) causes severe main thread blocking and frame drops.
+**Action:** Always offload file reading in SwiftUI to a background thread using `.task(id:)` and `Task.detached(priority: .background)`, then assign the result to a `@State` variable to trigger a UI update.
