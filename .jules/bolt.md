@@ -1,0 +1,3 @@
+## 2024-11-20 - SwiftUI ForEach Static Var Performance Pitfall
+**Learning:** In SwiftUI, using computed static properties (`static var`) for statically filtered lists (e.g., `Enum.allCases.filter`) accessed by `ForEach` loops causes the lists to re-evaluate on every UI render pass, which introduces unnecessary CPU overhead and can cause performance hitches, especially with long lists or complex filtering logic.
+**Action:** Always use lazily-initialized static constants (`static let`) with a closure to compute and cache the result exactly once when presenting filtered enum cases in SwiftUI views. Remember that the closure does not have implicit access to the type's other static members, so you must explicitly qualify them with the type name (e.g., `MusicGenre.allCases`).
