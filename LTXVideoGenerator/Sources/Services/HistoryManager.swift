@@ -11,6 +11,9 @@ class HistoryManager: ObservableObject {
     let thumbnailsDirectory: URL
     private let historyFile: URL
     
+    // ⚡ Bolt Optimization: Offload synchronous disk I/O to maintain UI responsiveness
+    private let ioQueue = DispatchQueue(label: "com.ltxvideogenerator.history.io")
+
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupport.appendingPathComponent("LTXVideoGenerator", isDirectory: true)
@@ -49,11 +52,19 @@ class HistoryManager: ObservableObject {
     }
     
     private func saveHistory() {
-        do {
-            let data = try JSONEncoder().encode(results)
-            try data.write(to: historyFile)
-        } catch {
-            print("Failed to save history: \(error)")
+        // Capture state synchronously on main thread
+        let currentResults = results
+        let currentHistoryFile = historyFile
+
+        // ⚡ Bolt Optimization: Offload disk write to prevent main thread blocking
+        // Impact: Eliminates UI hitches during history saves
+        ioQueue.async {
+            do {
+                let data = try JSONEncoder().encode(currentResults)
+                try data.write(to: currentHistoryFile, options: .atomic)
+            } catch {
+                print("Failed to save history: \(error)")
+            }
         }
     }
     
