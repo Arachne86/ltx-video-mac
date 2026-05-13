@@ -33,17 +33,29 @@ SUSPECTED_FILTERED_WORDS = [
     "sexual",
 ]
 
+_SORTED_FILTERED_WORDS = sorted(SUSPECTED_FILTERED_WORDS, key=len, reverse=True)
+_FILTERED_WORD_TO_INDEX = {word.lower(): i for i, word in enumerate(SUSPECTED_FILTERED_WORDS)}
+_FILTERED_WORDS_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(word) for word in _SORTED_FILTERED_WORDS) + r")\b",
+    re.I
+)
+
 
 def _sanitize_prompt(prompt: str) -> tuple[str, dict[str, str]]:
     """Replace suspected filtered words with placeholders. Returns (sanitized, {placeholder: original})."""
+    # ⚡ Bolt Optimization: Single-pass re.sub with pre-compiled regex and O(1) index lookup
+    # Impact: Reduces sanitization time from O(N*W) to O(W) and minimizes intermediate string allocations.
     replacements: dict[str, str] = {}
-    result = prompt
-    for i, word in enumerate(SUSPECTED_FILTERED_WORDS):
-        pattern = re.compile(r"\b" + re.escape(word) + r"\b", re.I)
-        for m in reversed(list(pattern.finditer(result))):
-            ph = f"__X{i}__"
-            replacements[ph] = m.group()
-            result = result[: m.start()] + ph + result[m.end() :]
+
+    def repl(match: re.Match) -> str:
+        orig = match.group()
+        idx = _FILTERED_WORD_TO_INDEX[orig.lower()]
+        ph = f"__X{idx}__"
+        if ph not in replacements:
+            replacements[ph] = orig
+        return ph
+
+    result = _FILTERED_WORDS_PATTERN.sub(repl, prompt)
     return result, replacements
 
 
