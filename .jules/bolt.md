@@ -1,0 +1,3 @@
+## 2024-05-19 - Synchronous disk I/O in SwiftUI views causes UI hitches
+**Learning:** Using `NSImage(contentsOf:)` synchronously on the main thread in reused SwiftUI views (like scrollable lists) blocks the UI thread and causes severe scrolling hitches. Attempting to fix this by using `AsyncImage(url:)` for local file URLs in scrollable lists causes flickering due to lack of in-memory caching.
+**Action:** Use `.task` with `Task.detached(priority: .background)` to offload the `NSImage` loading asynchronously and assign it back to a `@State` variable on the main actor. When doing this in reused views, reset the `@State` variable to `nil` at the start of the `.task(id:)` block and verify `if !Task.isCancelled` before assigning to prevent cancellation race conditions.
