@@ -10,6 +10,7 @@ class HistoryManager: ObservableObject {
     let videosDirectory: URL
     let thumbnailsDirectory: URL
     private let historyFile: URL
+    private let ioQueue = DispatchQueue(label: "com.ltxvideogenerator.history.io", qos: .background)
     
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -49,11 +50,17 @@ class HistoryManager: ObservableObject {
     }
     
     private func saveHistory() {
-        do {
-            let data = try JSONEncoder().encode(results)
-            try data.write(to: historyFile)
-        } catch {
-            print("Failed to save history: \(error)")
+        let resultsToSave = results
+        let fileToSave = historyFile
+
+        ioQueue.async {
+            do {
+                // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background queue to prevent main thread blocking
+                let data = try JSONEncoder().encode(resultsToSave)
+                try data.write(to: fileToSave)
+            } catch {
+                print("Failed to save history: \(error)")
+            }
         }
     }
     
@@ -65,12 +72,18 @@ class HistoryManager: ObservableObject {
     }
     
     func deleteResult(_ result: GenerationResult) {
-        // Delete video file
-        try? FileManager.default.removeItem(at: result.videoURL)
+        let videoURLToDelete = result.videoURL
+        let thumbnailURLToDelete = result.thumbnailURL
         
-        // Delete thumbnail
-        if let thumbnailURL = result.thumbnailURL {
-            try? FileManager.default.removeItem(at: thumbnailURL)
+        ioQueue.async {
+            // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background queue to prevent main thread blocking
+            // Delete video file
+            try? FileManager.default.removeItem(at: videoURLToDelete)
+
+            // Delete thumbnail
+            if let thumbnailURL = thumbnailURLToDelete {
+                try? FileManager.default.removeItem(at: thumbnailURL)
+            }
         }
         
         results.removeAll { $0.id == result.id }
@@ -83,10 +96,18 @@ class HistoryManager: ObservableObject {
     }
     
     func deleteResults(_ resultsToDelete: Set<GenerationResult>) {
-        for result in resultsToDelete {
-            try? FileManager.default.removeItem(at: result.videoURL)
-            if let thumbnailURL = result.thumbnailURL {
-                try? FileManager.default.removeItem(at: thumbnailURL)
+        let urlsToDelete = resultsToDelete.flatMap { result -> [URL] in
+            var urls = [result.videoURL]
+            if let thumb = result.thumbnailURL {
+                urls.append(thumb)
+            }
+            return urls
+        }
+
+        ioQueue.async {
+            // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background queue to prevent main thread blocking
+            for url in urlsToDelete {
+                try? FileManager.default.removeItem(at: url)
             }
         }
         
@@ -100,10 +121,18 @@ class HistoryManager: ObservableObject {
     }
     
     func clearHistory() {
-        for result in results {
-            try? FileManager.default.removeItem(at: result.videoURL)
-            if let thumbnailURL = result.thumbnailURL {
-                try? FileManager.default.removeItem(at: thumbnailURL)
+        let urlsToDelete = results.flatMap { result -> [URL] in
+            var urls = [result.videoURL]
+            if let thumb = result.thumbnailURL {
+                urls.append(thumb)
+            }
+            return urls
+        }
+
+        ioQueue.async {
+            // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background queue to prevent main thread blocking
+            for url in urlsToDelete {
+                try? FileManager.default.removeItem(at: url)
             }
         }
         
