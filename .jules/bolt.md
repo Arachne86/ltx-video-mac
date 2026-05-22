@@ -1,0 +1,4 @@
+
+## 2024-05-18 - @MainActor Sync File Write Anti-Pattern
+**Learning:** In `@MainActor` classes like `HistoryManager` and `PresetManager`, using synchronous `try data.write(to:)` or `FileManager.default.removeItem(at:)` on the main thread causes UI hitches when handling JSON files or video assets. However, wrapping them directly in `Task.detached { ... }` or raw async blocks while passing class properties (like `results` or `historyFile`) violates strict concurrency because it captures the main-actor-isolated `self`.
+**Action:** When offloading these I/O operations, use a dedicated serial `DispatchQueue(label: "...")` (to preserve write order and prevent data races) and *synchronously* capture the necessary isolated state (`results`, URLs) as local constants on the main thread *before* entering the `queue.async { ... }` block. This eliminates main-thread blocking while avoiding Swift strict concurrency warnings.
