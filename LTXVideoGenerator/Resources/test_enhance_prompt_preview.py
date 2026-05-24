@@ -53,5 +53,42 @@ class TestCleanResponse(unittest.TestCase):
         # " ...   " -> strip() -> "..." -> re.sub -> ""
         self.assertEqual(_clean_response(" ...   "), "")
 
+from enhance_prompt_preview import _sanitize_prompt, _merge_back
+
+class TestSanitizePrompt(unittest.TestCase):
+    def test_sanitize_and_merge(self):
+        prompt = "The dead body was covered in blood and gore, but it wasn't naked. Blood was everywhere, and someone was vomiting. More blood. Dead body. Sex."
+        sanitized, replacements = _sanitize_prompt(prompt)
+
+        # Check that offensive words are gone
+        self.assertNotIn("blood", sanitized.lower())
+        self.assertNotIn("gore", sanitized.lower())
+        self.assertNotIn("dead body", sanitized.lower())
+        self.assertNotIn("naked", sanitized.lower())
+        self.assertNotIn("vomiting", sanitized.lower())
+        self.assertNotIn("sex", sanitized.lower())
+
+        # Check that placeholders are present
+        self.assertTrue(any(ph in sanitized for ph in replacements))
+
+        # Check that merging back restores original prompt
+        merged = _merge_back(sanitized, replacements)
+        self.assertEqual(prompt, merged)
+
+    def test_no_matches(self):
+        prompt = "A beautiful sunset over the ocean."
+        sanitized, replacements = _sanitize_prompt(prompt)
+
+        self.assertEqual(prompt, sanitized)
+        self.assertEqual(len(replacements), 0)
+
+    def test_partial_word_match(self):
+        # "urine" is a target, but "murine" shouldn't be matched
+        prompt = "The murine model showed results."
+        sanitized, replacements = _sanitize_prompt(prompt)
+
+        self.assertEqual(prompt, sanitized)
+        self.assertEqual(len(replacements), 0)
+
 if __name__ == "__main__":
     unittest.main()
