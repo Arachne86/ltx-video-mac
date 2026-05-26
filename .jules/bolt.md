@@ -1,0 +1,3 @@
+## 2024-05-26 - UI Performance Degradation on Main Actor
+**Learning:** In `@MainActor` classes (like `HistoryManager` and `PresetManager`), synchronous file system operations (like JSON encoding and file writing or deletion) block the main thread and cause UI hitches. Using `Task.detached` for sequential file writes introduces data races and concurrency warnings.
+**Action:** Offload these I/O operations to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure correct write order. Always capture state synchronously as local variables on the main thread before dispatching to the async closure.
