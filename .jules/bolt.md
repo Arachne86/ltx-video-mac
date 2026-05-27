@@ -1,0 +1,3 @@
+## 2024-05-28 - SwiftUI Async Image Loading in Lists
+**Learning:** In SwiftUI macOS apps, synchronous disk I/O (e.g., `NSImage(contentsOf:)`) on the main thread causes UI blocking and stuttering, especially in scrollable lists. Standard `AsyncImage(url:)` for local file URLs in reused views lacks in-memory caching and causes flickering.
+**Action:** Use a `.task(id:)` modifier with `Task.detached(priority: .background)` to load the `NSImage` asynchronously and assign it to a `@State`. Always reset the `@State` to `nil` at the start of the `.task` block and check `if !Task.isCancelled` before assigning the result to prevent race conditions when views are rapidly recycled.
