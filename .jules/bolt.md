@@ -1,0 +1,3 @@
+## 2024-03-24 - Main Actor Bottleneck in SwiftUI Services
+**Learning:** In Swift `@MainActor` classes like `HistoryManager` and `PresetManager`, performing synchronous file operations (like `JSONEncoder().encode`, `FileManager.default.removeItem`, and `Data.write`) blocks the main thread, causing severe UI hitches during auto-saves and deletions.
+**Action:** Always offload disk I/O in UI-bound services to a dedicated serial background `DispatchQueue`. Critically, ensure that state used for writing (e.g., arrays of models or file paths) is captured synchronously as local variables on the main thread *before* entering the `async` closure to avoid strict concurrency violations or race conditions.
