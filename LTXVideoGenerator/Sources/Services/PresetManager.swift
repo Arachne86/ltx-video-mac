@@ -8,6 +8,9 @@ class PresetManager: ObservableObject {
     
     private let presetsFile: URL
     
+    // ⚡ Bolt Optimization: Dedicated queue to offload synchronous disk I/O from the main thread
+    private let ioQueue = DispatchQueue(label: "com.ltxvideogenerator.preset.io", qos: .background)
+
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupport.appendingPathComponent("LTXVideoGenerator", isDirectory: true)
@@ -44,14 +47,17 @@ class PresetManager: ObservableObject {
     }
     
     private func savePresets() {
-        // Only save custom presets
+        // Capture state synchronously on the main thread
         let customPresets = presets.filter { !$0.isBuiltIn }
+        let targetFile = presetsFile
         
-        do {
-            let data = try JSONEncoder().encode(customPresets)
-            try data.write(to: presetsFile)
-        } catch {
-            print("Failed to save presets: \(error)")
+        ioQueue.async {
+            do {
+                let data = try JSONEncoder().encode(customPresets)
+                try data.write(to: targetFile)
+            } catch {
+                print("Failed to save presets: \(error)")
+            }
         }
     }
     
