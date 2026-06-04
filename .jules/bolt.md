@@ -1,0 +1,5 @@
+## 2024-02-14 - SwiftUI Scroll Performance & Strict Concurrency
+
+**Learning:** When loading local disk images in SwiftUI scrollable lists (like `HistoryView`), using `AsyncImage(url:)` fails to cache and causes flickering. Synchronously using `NSImage(contentsOf:)` blocks the Main Actor causing extreme UI jank. Offloading the work to a background thread using `Task.detached` within a `.task(id:)` modifier is the correct approach, but it requires careful coordination (capturing the result of the detached task rather than mutating `@State` inside it) to avoid Swift 6 strict concurrency violations. Furthermore, `@State` variables must be proactively set to `nil` at the start of the task, and assigned back *only* if `!Task.isCancelled` to avoid race conditions as views are rapidly recycled during fast scrolling.
+
+**Action:** Always wrap synchronous disk reads (e.g., `NSImage(contentsOf:)`) in a `.task(id:)` modifier when used within standard SwiftUI components. Await the result of a `Task.detached { ... }.value` block to safely bridge the data back to the Main Actor-bound `@State` property.
