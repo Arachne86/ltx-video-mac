@@ -736,7 +736,14 @@ struct PromptInputView: View {
     }
     
     private func loadThumbnail(from url: URL) {
-        if let image = NSImage(contentsOf: url) {
+        // ⚡ Bolt Optimization: Offload synchronous disk I/O to background thread. Impact: Eliminates main thread blocking
+        Task {
+            let loadedImage = await Task.detached(priority: .background) {
+                NSImage(contentsOf: url)
+            }.value
+
+            guard !Task.isCancelled, let image = loadedImage else { return }
+
             // Create a smaller thumbnail for display
             let maxSize: CGFloat = 160
             let aspectRatio = image.size.width / image.size.height
