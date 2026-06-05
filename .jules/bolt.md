@@ -1,0 +1,3 @@
+## 2024-06-25 - Offload Synchronous Disk I/O from MainActor
+**Learning:** In Swift, methods in `@MainActor` classes (like `PresetManager` and `HistoryManager`) run entirely on the main thread. Synchronous file system operations (`JSONEncoder().encode()`, `Data.write()`, `FileManager.removeItem()`) block the UI, causing noticeable frame drops/hitches when managing presets or history.
+**Action:** When saving state to disk in a main-actor bound class, always capture the necessary state synchronously to avoid data races, but offload the actual file I/O to a background `DispatchQueue` using `queue.async { ... }`.
