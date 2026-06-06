@@ -1,0 +1,3 @@
+## 2024-05-18 - Offloading synchronous disk I/O in @MainActor
+**Learning:** Synchronous file system operations (like JSON encoding, writing, or deleting) in `@MainActor` classes (like `HistoryManager` and `PresetManager`) block the main thread and cause UI hitches. Using `Task.detached` for sequential file writes is an anti-pattern as it executes concurrently and can introduce data races or corrupt the write order.
+**Action:** Always offload these operations to a dedicated serial background `DispatchQueue`. Ensure to capture state synchronously as local variables on the main thread before dispatching to avoid strict concurrency warnings or errors triggered by capturing `self` in the async closure.
