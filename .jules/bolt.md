@@ -1,0 +1,3 @@
+## 2024-06-07 - Asynchronous Image Loading in SwiftUI ScrollViews on macOS
+**Learning:** Using `NSImage(contentsOf:)` synchronously within a SwiftUI view body blocks the main thread, causing significant UI hitches when rendering lists (like `HistoryView`). Direct use of `AsyncImage(url:)` for local file URLs in scrollable lists lacks caching and can cause flickering.
+**Action:** Always offload synchronous disk I/O in SwiftUI views using `.task` combined with `Task.detached(priority: .background)`. Reset the `@State` variable to `nil` at the start of `.task` and verify `if !Task.isCancelled` before assigning the result back to prevent race conditions during rapid recycling.
