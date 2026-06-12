@@ -1,0 +1,3 @@
+## 2024-05-18 - [Avoid synchronous disk I/O for images in SwiftUI scrollable lists]
+**Learning:** Using `NSImage(contentsOf:)` or similar synchronous loading for images in scrollable lists like `LazyVGrid` or `List` blocks the main thread, causing severe UI hitching. Furthermore, `AsyncImage` for local file URLs in such views is an anti-pattern as it lacks in-memory caching and causes flickering when views are rapidly recycled.
+**Action:** Use a custom `@State` alongside `.task(id:)` with `Task.detached(priority: .background)` to load the `NSImage` asynchronously. Reset the `@State` to `nil` at the start of the task, and check `!Task.isCancelled` before assigning the result back to the `@State` to prevent cancellation race conditions.
