@@ -233,12 +233,13 @@ struct HistoryThumbnailView: View {
     let result: GenerationResult
     let isSelected: Bool
     
+    @State private var thumbnailImage: NSImage?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
+                if let image = thumbnailImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -252,6 +253,22 @@ struct HistoryThumbnailView: View {
             }
             .frame(height: 120)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .task(id: result.thumbnailURL) {
+                // ⚡ Bolt Optimization: Offload synchronous disk I/O to a detached background task.
+                // Impact: Eliminates main thread blocking when scrolling through large video histories, preventing UI hitches.
+                // Reset image when recycling the view for a new URL.
+                thumbnailImage = nil
+
+                guard let url = result.thumbnailURL else { return }
+
+                let loadedImage = await Task.detached(priority: .background) {
+                    NSImage(contentsOf: url)
+                }.value
+
+                if !Task.isCancelled {
+                    thumbnailImage = loadedImage
+                }
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 3)
