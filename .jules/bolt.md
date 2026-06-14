@@ -1,0 +1,3 @@
+## 2025-02-24 - [Avoid synchronous disk I/O in SwiftUI lists]
+**Learning:** Initializing `NSImage(contentsOf:)` synchronously on the main thread in a reused SwiftUI component like a `HistoryThumbnailView` causes UI blockages and jank when scrolling. Since `AsyncImage` only supports remote URLs out of the box and lacks disk-caching for local files without custom boilerplate, a local `task` offloading initialization to a detached background thread provides a simple, robust workaround.
+**Action:** Always offload local file-to-image initialization to a background `Task.detached` when building lists/grids of local images in SwiftUI for macOS apps. Guard assignments back to state with `!Task.isCancelled` to avoid race conditions during fast scrolling and view recycling.
