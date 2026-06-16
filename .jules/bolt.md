@@ -1,0 +1,3 @@
+## 2024-06-12 - Synchronous MainActor File I/O
+**Learning:** In `@MainActor` SwiftUI classes (like `HistoryManager` and `PresetManager`), performing synchronous file system operations (e.g., `JSONEncoder().encode`, `try data.write`, `FileManager.default.removeItem`) directly on the main thread causes significant UI hitches as file sizes grow. Using `Task.detached` for these operations can lead to concurrent data races and strict concurrency warnings.
+**Action:** When offloading these operations, create a dedicated serial background `DispatchQueue`. Capture any required state (like arrays or URLs) synchronously as local variables on the main thread *before* entering the `queue.async { ... }` block to ensure thread-safety and maintain write order.
