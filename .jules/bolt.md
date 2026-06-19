@@ -1,0 +1,3 @@
+## 2024-06-19 - Synchronous File I/O in MainActor Classes Causes UI Hitches
+**Learning:** In `@MainActor` classes (like `HistoryManager` and `PresetManager`), synchronous file system operations (JSON encoding, writing, deleting) block the main thread and cause UI hitches. Using `Task.detached` for sequential file writes executes them concurrently and introduces data races.
+**Action:** Offload synchronous file I/O to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure write order. Always capture state synchronously as local variables on the main thread before dispatching to avoid strict concurrency warnings/errors triggered by capturing `self` in the async closure.
