@@ -11,6 +11,10 @@ class HistoryManager: ObservableObject {
     let thumbnailsDirectory: URL
     private let historyFile: URL
     
+    // ⚡ Bolt Optimization: Offload synchronous disk I/O to a background serial queue.
+    // Impact: Eliminates main thread blocking and prevents UI hitches when saving history or deleting files.
+    private let diskQueue = DispatchQueue(label: "com.ltxvideogenerator.history.disk")
+
     nonisolated init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupport.appendingPathComponent("LTXVideoGenerator", isDirectory: true)
@@ -49,11 +53,17 @@ class HistoryManager: ObservableObject {
     }
     
     private func saveHistory() {
-        do {
-            let data = try JSONEncoder().encode(results)
-            try data.write(to: historyFile)
-        } catch {
-            print("Failed to save history: \(error)")
+        // Capture state on main thread to avoid strict concurrency warnings
+        let currentResults = results
+        let targetFile = historyFile
+
+        diskQueue.async {
+            do {
+                let data = try JSONEncoder().encode(currentResults)
+                try data.write(to: targetFile)
+            } catch {
+                print("Failed to save history: \(error)")
+            }
         }
     }
     
@@ -65,13 +75,9 @@ class HistoryManager: ObservableObject {
     }
     
     func deleteResult(_ result: GenerationResult) {
-        // Delete video file
-        try? FileManager.default.removeItem(at: result.videoURL)
-        
-        // Delete thumbnail
-        if let thumbnailURL = result.thumbnailURL {
-            try? FileManager.default.removeItem(at: thumbnailURL)
-        }
+        // Capture URLs before background block
+        let videoURL = result.videoURL
+        let thumbnailURL = result.thumbnailURL
         
         results.removeAll { $0.id == result.id }
         
@@ -80,15 +86,21 @@ class HistoryManager: ObservableObject {
         }
         
         saveHistory()
-    }
-    
-    func deleteResults(_ resultsToDelete: Set<GenerationResult>) {
-        for result in resultsToDelete {
-            try? FileManager.default.removeItem(at: result.videoURL)
-            if let thumbnailURL = result.thumbnailURL {
+
+        diskQueue.async {
+            // Delete video file
+            try? FileManager.default.removeItem(at: videoURL)
+
+            // Delete thumbnail
+            if let thumbnailURL = thumbnailURL {
                 try? FileManager.default.removeItem(at: thumbnailURL)
             }
         }
+    }
+
+    func deleteResults(_ resultsToDelete: Set<GenerationResult>) {
+        // Collect URLs to delete
+        let urlsToDelete = resultsToDelete.map { ($0.videoURL, $0.thumbnailURL) }
         
         results.removeAll { resultsToDelete.contains($0) }
         
@@ -97,19 +109,33 @@ class HistoryManager: ObservableObject {
         }
         
         saveHistory()
+
+        diskQueue.async {
+            for (videoURL, thumbnailURL) in urlsToDelete {
+                try? FileManager.default.removeItem(at: videoURL)
+                if let thumbnailURL = thumbnailURL {
+                    try? FileManager.default.removeItem(at: thumbnailURL)
+                }
+            }
+        }
     }
     
     func clearHistory() {
-        for result in results {
-            try? FileManager.default.removeItem(at: result.videoURL)
-            if let thumbnailURL = result.thumbnailURL {
-                try? FileManager.default.removeItem(at: thumbnailURL)
-            }
-        }
+        // Collect URLs to delete
+        let urlsToDelete = results.map { ($0.videoURL, $0.thumbnailURL) }
         
         results.removeAll()
         selectedResult = nil
         saveHistory()
+
+        diskQueue.async {
+            for (videoURL, thumbnailURL) in urlsToDelete {
+                try? FileManager.default.removeItem(at: videoURL)
+                if let thumbnailURL = thumbnailURL {
+                    try? FileManager.default.removeItem(at: thumbnailURL)
+                }
+            }
+        }
     }
     
     // MARK: - Thumbnails
