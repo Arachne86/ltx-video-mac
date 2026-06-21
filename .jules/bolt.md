@@ -1,0 +1,3 @@
+## 2025-02-12 - Synchronous Disk I/O Offloading in @MainActor Classes
+**Learning:** In `@MainActor` classes (like HistoryManager and PresetManager), offloading synchronous file system operations (JSON encoding, writing) using `Task.detached` can introduce concurrency warnings and data races, as it does not guarantee execution order.
+**Action:** Use a dedicated serial background `DispatchQueue` instead of `Task.detached` to maintain write order while keeping the main thread responsive. Always capture state synchronously on the main thread as local variables before dispatching to the background queue to avoid strict concurrency warnings.
