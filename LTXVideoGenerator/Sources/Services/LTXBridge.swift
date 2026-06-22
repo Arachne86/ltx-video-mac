@@ -182,7 +182,8 @@ class LTXBridge {
         let output = try await runPythonFile(path: scriptPath, arguments: args, timeout: 3600) { stderr in
             // Capture enhanced prompt from stderr
             // Our generate.py emits "ENHANCED_PROMPT:..." and mlx_video may emit "Enhanced prompt: ..."
-            for line in stderr.components(separatedBy: "\n") {
+            // ⚡ Bolt Optimization: Use enumerateLines to avoid intermediate array allocations when parsing large stderr strings. Impact: Reduces memory overhead during continuous process output.
+            stderr.enumerateLines { line, _ in
                 let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
                 var extracted: String? = nil
                 if trimmed.hasPrefix("ENHANCED_PROMPT:") {
