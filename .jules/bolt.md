@@ -1,0 +1,3 @@
+## 2024-05-24 - SwiftUI Scroll Performance & Disk I/O
+**Learning:** Using `NSImage(contentsOf:)` directly in SwiftUI `View.body` (like inside `HistoryThumbnailView` within a `LazyVGrid`) causes synchronous disk I/O on the main thread, leading to severe UI blocking and scroll stuttering. Furthermore, `AsyncImage(url:)` shouldn't be used for local file URLs in scrollable lists because it lacks in-memory caching and causes flickering.
+**Action:** Always use `.task(id:)` with `Task.detached(priority: .background)` to offload disk I/O for images, ensuring we reset the `@State` when recycling views and check `!Task.isCancelled` before assigning.
