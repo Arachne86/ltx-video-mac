@@ -98,7 +98,10 @@ class PythonEnvironment {
         """
         
         if let output = runPythonSync(executable: execPath, script: script) {
-            let lines = output.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            var lines: [String] = []
+            output.enumerateLines { line, _ in
+                lines.append(line.trimmingCharacters(in: .whitespaces))
+            }
             if lines.count >= 3 {
                 let libDir = lines[0]
                 let ldLibrary = lines[1]
