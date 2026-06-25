@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid synchronous disk I/O on MainActor classes
+**Learning:** In SwiftUI macOS applications, classes marked with `@MainActor` (like `HistoryManager` and `PresetManager`) should avoid performing synchronous file system operations (like `Data.write` and `FileManager.removeItem`) directly. These operations block the main thread and can cause UI hitches or hangs.
+**Action:** Always offload synchronous file system operations to a dedicated serial background `DispatchQueue`. Critically, ensure that any state variables from the `@MainActor` class are captured synchronously as local variables *before* dispatching the block to the background queue. Using `Task.detached` is not suitable for sequential writes as it introduces data races.
