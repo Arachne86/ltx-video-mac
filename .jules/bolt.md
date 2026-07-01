@@ -1,0 +1,3 @@
+## 2026-07-01 - Offload MainThread Blocking I/O to Background Queue
+**Learning:** In `@MainActor` classes, synchronous file system operations (like JSON encoding/writing, and file deletion) block the main thread and cause UI hitches. They should be offloaded to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure write order, rather than using `Task.detached` which can introduce data races due to concurrent execution.
+**Action:** When saving state or deleting files in a UI-bound Swift manager, capture the necessary state synchronously on the main thread, and then use `DispatchQueue(label:).async` to perform the disk I/O.
