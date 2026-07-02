@@ -606,17 +606,17 @@ class AudioService: ObservableObject {
             executable: pythonPath,
             script: script,
             timeout: 300
-        ) { stderr in
+        ) { line in
             DispatchQueue.main.async {
-                if stderr.hasPrefix("PROGRESS:") {
-                    let parts = stderr.dropFirst(9).split(separator: ":")
+                if line.hasPrefix("PROGRESS:") {
+                    let parts = line.dropFirst(9).split(separator: ":")
                     if parts.count >= 2,
                        let pct = Double(parts[0]) {
                         let msg = String(parts[1...].joined(separator: ":"))
                         progressHandler(pct / 100.0, msg)
                     }
-                } else if stderr.hasPrefix("STATUS:") {
-                    let msg = String(stderr.dropFirst(7))
+                } else if line.hasPrefix("STATUS:") {
+                    let msg = String(line.dropFirst(7))
                     progressHandler(0.5, msg)
                 }
             }
@@ -1005,10 +1005,20 @@ class AudioService: ObservableObject {
                 process.standardOutput = stdoutPipe
                 process.standardError = stderrPipe
                 
+                var lineBuffer = ""
+                let stderrLock = NSLock()
+
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
-                        stderrHandler?(str)
+                        stderrLock.lock()
+                        lineBuffer += str
+                        while let range = lineBuffer.range(of: "\n") {
+                            let line = String(lineBuffer[..<range.lowerBound])
+                            lineBuffer.removeSubrange(..<range.upperBound)
+                            stderrHandler?(line)
+                        }
+                        stderrLock.unlock()
                     }
                 }
                 

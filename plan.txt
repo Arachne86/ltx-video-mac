@@ -1,0 +1,11 @@
+1. Implement buffered line extraction in `LTXBridge.swift` and `AudioService.swift`
+- In `LTXBridge.swift:runPython`, `runPythonFile`, and `runPythonScript`, the stderr handler receives chunks of string data.
+- The previous implementation accumulated the entire string (`stderrAccumulated += str`) and passed the *entire accumulated history* to the callback `stderrHandler?(accumulated)`.
+- This causes the UI progress parser to use `.components(separatedBy: "\n")` and `hasPrefix` repeatedly on an ever-growing string, resulting in O(N^2) complexity and memory bloat. Additionally, calling `stderr.hasPrefix("STAGE:")` fails because `stderr` is the entire history from the beginning.
+- Fix: Use a local variable `var lineBuffer = ""` inside `runPythonFile`, `runPython`, and `AudioService.runPython`.
+- As chunks arrive, append to `lineBuffer`. Then, while `lineBuffer.contains("\n")`, extract the string up to the newline and yield it to the callback as a single line, thus removing `accumulated` parameter in the callback.
+- Modify the handler in `generate` to process single `stderr` lines rather than the entire accumulated string. (Change the loop in `generate(request:)` and `hasPrefix` checks to process just the passed `line` instead of `stderr.components(separatedBy: "\n")`).
+
+2. Create a test script to verify Swift syntax.
+3. Complete pre commit steps to ensure proper testing, verification, review, and reflection are done.
+4. Submit PR.

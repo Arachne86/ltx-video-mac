@@ -179,32 +179,29 @@ class LTXBridge {
         let enhancedPromptLock = NSLock()
         var capturedEnhancedPrompt: String? = nil
         
-        let output = try await runPythonFile(path: scriptPath, arguments: args, timeout: 3600) { stderr in
-            // Capture enhanced prompt from stderr
-            // Our generate.py emits "ENHANCED_PROMPT:..." and mlx_video may emit "Enhanced prompt: ..."
-            for line in stderr.components(separatedBy: "\n") {
-                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                var extracted: String? = nil
-                if trimmed.hasPrefix("ENHANCED_PROMPT:") {
-                    extracted = String(trimmed.dropFirst("ENHANCED_PROMPT:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
-                } else if trimmed.lowercased().hasPrefix("enhanced prompt:") {
-                    extracted = String(trimmed.dropFirst("enhanced prompt:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                if let text = extracted, !text.isEmpty {
-                    enhancedPromptLock.lock()
-                    capturedEnhancedPrompt = text
-                    enhancedPromptLock.unlock()
-                }
+        let output = try await runPythonFile(path: scriptPath, arguments: args, timeout: 3600) { line in
+            // Capture enhanced prompt from stderr (now passed line by line)
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            var extracted: String? = nil
+            if trimmed.hasPrefix("ENHANCED_PROMPT:") {
+                extracted = String(trimmed.dropFirst("ENHANCED_PROMPT:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else if trimmed.lowercased().hasPrefix("enhanced prompt:") {
+                extracted = String(trimmed.dropFirst("enhanced prompt:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let text = extracted, !text.isEmpty {
+                enhancedPromptLock.lock()
+                capturedEnhancedPrompt = text
+                enhancedPromptLock.unlock()
             }
             
             DispatchQueue.main.async {
                 // Parse structured progress output from generate.py
                 // Format: STAGE:X:STEP:Y:Z:message or STATUS:message or DOWNLOAD:START/COMPLETE:repo
                 
-                if stderr.hasPrefix("STAGE:") {
+                if line.hasPrefix("STAGE:") {
                     // Parse stage-aware progress: STAGE:1:STEP:3:8:Denoising
                     // Stage 1 maps to 0.1-0.5, Stage 2 maps to 0.5-0.9
-                    let parts = stderr.components(separatedBy: ":")
+                    let parts = line.components(separatedBy: ":")
                     if parts.count >= 5,
                        let stage = Int(parts[1]),
                        let step = Int(parts[3]),
@@ -224,9 +221,9 @@ class LTXBridge {
                         }
                         progressHandler(mappedProgress, message)
                     }
-                } else if stderr.hasPrefix("STATUS:") {
+                } else if line.hasPrefix("STATUS:") {
                     // Parse status message: STATUS:Loading model...
-                    let message = String(stderr.dropFirst(7))
+                    let message = String(line.dropFirst(7))
                     if message.contains("Stage 1") {
                         progressHandler(0.1, message)
                     } else if message.contains("Stage 2") || message.contains("Upsampling") {
@@ -240,15 +237,15 @@ class LTXBridge {
                     } else {
                         progressHandler(0.05, message)
                     }
-                } else if stderr.hasPrefix("MODEL:CACHED:") {
-                    let repo = String(stderr.dropFirst(13))
+                } else if line.hasPrefix("MODEL:CACHED:") {
+                    let repo = String(line.dropFirst(13))
                     progressHandler(0.08, "Model cached: \(repo)")
-                } else if stderr.hasPrefix("DOWNLOAD:START:") {
-                    let repo = String(stderr.dropFirst(15))
+                } else if line.hasPrefix("DOWNLOAD:START:") {
+                    let repo = String(line.dropFirst(15))
                     progressHandler(0.01, "Downloading model: \(repo)")
-                } else if stderr.hasPrefix("DOWNLOAD:PROGRESS:") {
+                } else if line.hasPrefix("DOWNLOAD:PROGRESS:") {
                     // Format: DOWNLOAD:PROGRESS:currentBytes:totalBytes:pct%
-                    let parts = stderr.dropFirst(18).split(separator: ":")
+                    let parts = line.dropFirst(18).split(separator: ":")
                     if parts.count >= 3 {
                         let currentBytes = Double(parts[0]) ?? 0
                         let totalBytes = Double(parts[1]) ?? 1
@@ -261,19 +258,19 @@ class LTXBridge {
                         let mappedProgress = 0.01 + (Double(pct) / 100.0 * 0.07)
                         progressHandler(mappedProgress, String(format: "Downloading: %.1fGB / %.1fGB (%d%%)", currentGB, totalGB, pct))
                     }
-                } else if stderr.hasPrefix("DOWNLOAD:COMPLETE:") {
+                } else if line.hasPrefix("DOWNLOAD:COMPLETE:") {
                     progressHandler(0.08, "Model download complete")
-                } else if stderr.contains("Downloading") || stderr.contains("Fetching") {
+                } else if line.contains("Downloading") || line.contains("Fetching") {
                     // huggingface_hub tqdm: "Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]"
                     // Per-file bytes: "model.safetensors:  45%|████▌     | 2.3G/5.1G" - parse bytes if present
                     let fileCountPattern = #/(\d+)%\|[^|]*\|\s*(\d+)/(\d+)/#
-                    if let match = stderr.firstMatch(of: fileCountPattern) {
+                    if let match = line.firstMatch(of: fileCountPattern) {
                         let currentFile = Int(match.2) ?? 0
                         let totalFiles = Int(match.3) ?? 1
                         var filePercent = Double(currentFile) / Double(max(totalFiles, 1))
                         var message = "Downloading: \(currentFile)/\(totalFiles) files"
                         // Bytes progress: "| 2.3G/5.1G" or "| 45MB/100MB"
-                        if let bytesMatch = stderr.firstMatch(of: #/\|\s*([\d.]+)([KMG]?)B?\/([\d.]+)([KMG]?)B?/#) {
+                        if let bytesMatch = line.firstMatch(of: #/\|\s*([\d.]+)([KMG]?)B?\/([\d.]+)([KMG]?)B?/#) {
                             let curVal = Double(bytesMatch.1) ?? 0
                             let totVal = Double(bytesMatch.3) ?? 1
                             let unit = String(bytesMatch.2)
@@ -434,6 +431,7 @@ class LTXBridge {
                 process.standardError = stderrPipe
                 
                 var stderrAccumulated = ""
+                var lineBuffer = ""
                 let stderrLock = NSLock()
                 
                 // Ensure log file exists and open it once
@@ -453,14 +451,18 @@ class LTXBridge {
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
                         stderrLock.lock()
                         stderrAccumulated += str
-                        let accumulated = stderrAccumulated
+                        lineBuffer += str
+
+                        while let range = lineBuffer.range(of: "\n") {
+                            let line = String(lineBuffer[..<range.lowerBound])
+                            lineBuffer.removeSubrange(..<range.upperBound)
+                            stderrHandler?(line)
+                        }
                         stderrLock.unlock()
                         
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
                             try? logHandle?.write(contentsOf: logData)
                         }
-                        
-                        stderrHandler?(accumulated)
                     }
                 }
                 
@@ -560,6 +562,7 @@ class LTXBridge {
                 process.standardError = stderrPipe
 
                 var stderrAccumulated = ""
+                var lineBuffer = ""
                 let stderrLock = NSLock()
 
                 stderrPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -567,7 +570,13 @@ class LTXBridge {
                     if !data.isEmpty, let str = String(data: data, encoding: .utf8) {
                         stderrLock.lock()
                         stderrAccumulated += str
-                        let accumulated = stderrAccumulated
+                        lineBuffer += str
+
+                        while let range = lineBuffer.range(of: "\n") {
+                            let line = String(lineBuffer[..<range.lowerBound])
+                            lineBuffer.removeSubrange(..<range.upperBound)
+                            stderrHandler?(line)
+                        }
                         stderrLock.unlock()
 
                         if let logData = ("[STDERR] " + str).data(using: .utf8) {
@@ -581,8 +590,6 @@ class LTXBridge {
                                 try? logData.write(to: URL(fileURLWithPath: logFile))
                             }
                         }
-
-                        stderrHandler?(accumulated)
                     }
                 }
 
