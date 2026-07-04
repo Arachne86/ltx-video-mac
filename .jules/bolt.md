@@ -1,0 +1,3 @@
+## 2024-05-24 - Main Thread Blocking in `@MainActor` File System Operations
+**Learning:** In `@MainActor` classes (like `HistoryManager` and `PresetManager`), synchronous file system operations (JSON encoding, writing, deleting) block the main thread and cause UI hitches. However, using `Task.detached` for sequential file writes is dangerous because it executes concurrently, potentially introducing data races or out-of-order writes.
+**Action:** Offload file system operations to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure write order. Always capture state synchronously as local variables on the main thread before dispatching to avoid strict concurrency warnings/errors triggered by capturing `self` in the async closure.
