@@ -1,0 +1,3 @@
+## 2024-05-17 - [Offloading synchronous I/O from MainActor]
+**Learning:** In `@MainActor` classes, synchronous file system operations (like JSON encoding, writing, or deleting) block the main thread and can cause UI hitches. However, using `Task.detached` to offload sequential file writes is an anti-pattern because it executes concurrently and can introduce data races or incorrect write ordering.
+**Action:** Always offload sequential file operations to a dedicated serial background `DispatchQueue` to maintain UI responsiveness and ensure correct write order. Always capture state synchronously as local variables on the main thread before dispatching to the background queue to avoid strict concurrency warnings.
