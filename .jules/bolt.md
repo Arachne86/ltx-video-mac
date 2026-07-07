@@ -1,0 +1,3 @@
+## 2024-05-18 - [Offload Main Thread Disk I/O for Thumbnails]
+**Learning:** Found a severe UI responsiveness bottleneck in `HistoryThumbnailView` where synchronous `NSImage(contentsOf:)` calls inside the view `body` block the main thread. In SwiftUI macOS apps, `AsyncImage(url:)` shouldn't be used for local file URLs in scrollable lists because it lacks in-memory caching and causes flickering.
+**Action:** Always use `.task(id:)` with `Task.detached(priority: .background)` to load the `NSImage` asynchronously and assign it to a `@State` property. Ensure the state is reset to `nil` at the start of the task to prevent flickering during rapid cell reuse, and check `if !Task.isCancelled` before state assignment.
