@@ -232,13 +232,13 @@ struct HistoryView: View {
 struct HistoryThumbnailView: View {
     let result: GenerationResult
     let isSelected: Bool
+    @State private var thumbnailImage: NSImage?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thumbnail
             ZStack {
-                if let thumbnailURL = result.thumbnailURL,
-                   let image = NSImage(contentsOf: thumbnailURL) {
+                if let image = thumbnailImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -252,6 +252,18 @@ struct HistoryThumbnailView: View {
             }
             .frame(height: 120)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            // ⚡ Bolt Optimization: Offload synchronous disk I/O to background thread. Impact: Eliminates main thread blocking during scrolling.
+            .task(id: result.thumbnailURL) {
+                guard let url = result.thumbnailURL else { return }
+                thumbnailImage = nil
+                let loadedImage = await Task.detached(priority: .background) {
+                    return NSImage(contentsOf: url)
+                }.value
+
+                if !Task.isCancelled {
+                    thumbnailImage = loadedImage
+                }
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 3)
